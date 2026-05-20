@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Response Analytics - SAKRA VISION</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="alternate icon" href="/assets/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+  <link rel="manifest" href="/assets/site.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="application-name" content="Response Analytics">
+  <meta name="apple-mobile-web-app-title" content="Response Analytics">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-dark: #090b0e;
+      --card-bg: rgba(22, 26, 33, 0.6);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.15);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.04) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.03) 0%, transparent 40%);
+      background-attachment: fixed;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border-color);
+      padding: 20px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 17, 21, 0.8);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-title span {
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .admin-controls {
+      display: flex;
+      gap: 12px;
+    }
+
+    .dashboard-shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 40px;
+    }
+
+    .page-title-block {
+      margin-bottom: 30px;
+    }
+
+    .page-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Filters Bar */
+    .filter-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-bottom: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      flex-grow: 1;
+      max-width: 900px;
+    }
+
+    .filter-select-wrap {
+      min-width: 180px;
+      flex-grow: 1;
+    }
+
+    select {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #ffffff;
+      width: 100%;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: rgba(255, 255, 255, 0.05);
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+    }
+
+    select option {
+      background-color: #0f131a;
+      color: #ffffff;
+    }
+
+    /* Buttons styling */
+    .neo-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid transparent;
+      box-sizing: border-box;
+      gap: 8px;
+    }
+
+    .neo-btn-primary {
+      background: #1e222b;
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.03);
+      box-shadow: 
+        -2px -2px 6px rgba(255, 255, 255, 0.02),
+        2px 2px 6px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .neo-btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 
+        -4px -4px 8px rgba(255, 255, 255, 0.03),
+        4px 4px 10px rgba(0, 0, 0, 0.5),
+        0 0 10px rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #818cf8;
+    }
+
+    .neo-btn-secondary {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      border-color: rgba(255, 255, 255, 0.05);
+      box-shadow: 
+        -1px -1px 3px rgba(255, 255, 255, 0.01),
+        1px 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .neo-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .neo-btn:active {
+      transform: translateY(1px);
+      box-shadow: 
+        inset -1px -1px 3px rgba(255, 255, 255, 0.05),
+        inset 1px 1px 3px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Metric Summary Grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .summary-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(12px);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .summary-card:hover {
+      border-color: rgba(99, 102, 241, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.08);
+    }
+
+    .summary-icon {
+      font-size: 20px;
+      margin-bottom: 12px;
+      opacity: 0.85;
+    }
+
+    .summary-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .summary-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .summary-trend {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .summary-card.pending { border-left: 4px solid var(--warning); }
+    .summary-card.approved { border-left: 4px solid var(--success); }
+    .summary-card.rejected { border-left: 4px solid var(--danger); }
+    .summary-card.correction { border-left: 4px solid var(--primary); }
+
+    /* Analytics Grid Layout */
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      margin-bottom: 30px;
+    }
+
+    @media (min-width: 900px) {
+      .analytics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .chart-card.wide {
+        grid-column: 1 / -1;
+      }
+    }
+
+    /* Chart Cards styling */
+    .chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chart-header {
+      margin-bottom: 16px;
+    }
+
+    .chart-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .chart-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      min-height: 280px;
+      max-height: 320px;
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @media (max-width: 640px) {
+      .chart-wrap {
+        min-height: 240px;
+      }
+    }
+
+    .chart-insight {
+      background: rgba(255, 255, 255, 0.02);
+      border-top: 1px solid var(--border-color);
+      padding-top: 12px;
+      margin-top: 16px;
+      font-size: 12px;
+      color: #c7d2fe;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    .chart-empty-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      height: 100%;
+      width: 100%;
+      min-height: 200px;
+      gap: 8px;
+    }
+
+    /* Quality Metrics Grid */
+    .quality-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .quality-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .quality-val {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .quality-card.alert-red .quality-val { color: var(--danger); }
+    .quality-card.alert-yellow .quality-val { color: var(--warning); }
+    .quality-card.alert-green .quality-val { color: var(--success); }
+
+    .quality-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Timeline Section */
+    .timeline-container {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+    }
+
+    .timeline-container::before {
+      content: '';
+      position: absolute;
+      left: 17px;
+      top: 10px;
+      bottom: 10px;
+      width: 2px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .timeline-item {
+      display: flex;
+      gap: 20px;
+      position: relative;
+    }
+
+    .timeline-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      z-index: 1;
+      flex-shrink: 0;
+    }
+
+    .timeline-badge.badge-SUBMITTED { background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); color: #818cf8; }
+    .timeline-badge.badge-APPROVED { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: var(--success); }
+    .timeline-badge.badge-REJECTED { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: var(--danger); }
+    .timeline-badge.badge-EDITED { background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color: var(--warning); }
+    .timeline-badge.badge-NEEDS_CORRECTION { background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.3); color: #a78bfa; }
+
+    .timeline-content {
+      flex-grow: 1;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px 18px;
+    }
+
+    .timeline-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .timeline-user {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .timeline-time {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .timeline-message {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Loading Skeletons */
+    .skeleton-text {
+      height: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      margin-bottom: 8px;
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+
+    .skeleton-value {
+      height: 36px;
+      width: 80px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+
+    .skeleton-chart {
+      height: 240px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 0.3; }
+      100% { opacity: 0.6; }
+    }
+
+    .loading-state {
+      display: none;
+    }
+
+    body.loading .loading-state {
+      display: block;
+    }
+
+    body.loading .real-state {
+      display: none !important;
+    }
+
+    /* Error and Empty State styling */
+    .error-card, .no-data-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 48px;
+      text-align: center;
+      max-width: 600px;
+      margin: 80px auto;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(12px);
+      display: none;
+    }
+
+    .error-icon, .no-data-icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+
+    .error-card h2, .no-data-card h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 12px;
+    }
+
+    .error-card p, .no-data-card p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .error-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    /* Toast styling */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: rgba(22, 26, 33, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 14px 20px;
+      border-radius: 12px;
+      color: #ffffff;
+      font-size: 13px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      animation: slideInRight 0.3s ease;
+      border-left: 4px solid var(--primary);
+    }
+
+    .toast.toast-danger { border-left-color: var(--danger); }
+    .toast.toast-success { border-left-color: var(--success); }
+
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body class="loading">
+
+  <header>
+    <div class="brand-title">
+      SAKRA VISION <span>Admin Panel</span>
+    </div>
+    <div class="admin-controls">
+      <a href="/admin-dashboard.html" class="neo-btn neo-btn-secondary">
+        ← Dashboard
+      </a>
+      <button class="neo-btn neo-btn-secondary" onclick="loadAnalytics()">
+        🔄 Refresh
+      </button>
+      <button class="neo-btn neo-btn-primary" onclick="exportCSV()">
+        📥 Export CSV
+      </button>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    
+    <div class="page-title-block">
+      <h1 class="page-title">Response Analytics</h1>
+      <p class="page-subtitle">Google Forms-style visual insights from live registration data.</p>
+    </div>
+
+    <!-- Filters Section -->
+    <section class="filter-bar">
+      <div class="filter-group">
+        <div class="filter-select-wrap">
+          <select id="daysFilter" onchange="handleFilterChange()">
+            <option value="7">Last 7 Days</option>
+            <option value="14" selected>Last 14 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="all">All Time</option>
+          </select>
+        </div>
+        <div class="filter-select-wrap">
+          <select id="paymentStatusFilter" onchange="handleFilterChange()">
+            <option value="all" selected>All Payment Statuses</option>
+            <option value="PENDING_REVIEW">Pending Review</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="NEEDS_CORRECTION">Needs Correction</option>
+          </select>
+        </div>
+        <div class="filter-select-wrap">
+          <select id="departmentFilter" onchange="handleFilterChange()">
+            <option value="all" selected>All Departments</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOADING STATE (SKELETONS) -->
+    <div class="loading-state">
+      <div class="summary-grid">
+        <div class="summary-card" style="min-height: 120px;" rep-count="8">
+          <div class="skeleton-text" style="width: 50%;"></div>
+          <div class="skeleton-value"></div>
+        </div>
+      </div>
+      <div class="analytics-grid">
+        <div class="chart-card" rep-count="4">
+          <div class="skeleton-text" style="width: 40%; height: 20px; margin-bottom: 24px;"></div>
+          <div class="skeleton-chart"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPTY DB STATE -->
+    <div id="noDataPanel" class="no-data-card">
+      <div class="no-data-icon">📊</div>
+      <h2>No responses yet</h2>
+      <p>Analytics graphs and response distributions will automatically render after your users submit their registrations.</p>
+      <a href="/admin-dashboard.html" class="neo-btn neo-btn-primary">Back to Dashboard</a>
+    </div>
+
+    <!-- ERROR PANEL -->
+    <div id="errorPanel" class="error-card">
+      <div class="error-icon">⚠️</div>
+      <h2 id="errorMessage">Unable to load analytics</h2>
+      <p>We encountered a connection issue fetching data from the database server. Please check if the FastAPI service is running correctly.</p>
+      <div class="error-actions">
+        <button class="neo-btn neo-btn-primary" onclick="loadAnalytics()">Retry Connection</button>
+        <a href="/admin-dashboard.html" class="neo-btn neo-btn-secondary">Dashboard</a>
+      </div>
+    </div>
+
+    <!-- REAL DYNAMIC ANALYTICS WORKSPACE -->
+    <div class="real-state">
+
+      <!-- Summary Metrics Grid -->
+      <section class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-icon">📝</div>
+          <div class="summary-label">Total Responses</div>
+          <div class="summary-value" id="sumTotal">0</div>
+          <div class="summary-trend">All submissions received</div>
+        </div>
+        <div class="summary-card pending">
+          <div class="summary-icon">⏳</div>
+          <div class="summary-label">Pending Review</div>
+          <div class="summary-value" id="sumPending">0</div>
+          <div class="summary-trend" id="ratePending">0% of total</div>
+        </div>
+        <div class="summary-card approved">
+          <div class="summary-icon">✅</div>
+          <div class="summary-label">Approved</div>
+          <div class="summary-value" id="sumApproved">0</div>
+          <div class="summary-trend" id="rateApproved">0% approval rate</div>
+        </div>
+        <div class="summary-card rejected">
+          <div class="summary-icon">❌</div>
+          <div class="summary-label">Rejected</div>
+          <div class="summary-value" id="sumRejected">0</div>
+          <div class="summary-trend" id="rateRejected">0% rejection rate</div>
+        </div>
+        <div class="summary-card correction">
+          <div class="summary-icon">⚙️</div>
+          <div class="summary-label">Needs Correction</div>
+          <div class="summary-value" id="sumCorrection">0</div>
+          <div class="summary-trend">Awaiting corrections</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon">💰</div>
+          <div class="summary-label">Total Approved Fees</div>
+          <div class="summary-value" id="sumApprovedAmount">₹0</div>
+          <div class="summary-trend" id="sumTotalAmount">Expected: ₹0</div>
+        </div>
+        <div class="summary-card approved">
+          <div class="summary-icon">📈</div>
+          <div class="summary-label">Approval Rate</div>
+          <div class="summary-value" id="sumApprovalRate">0%</div>
+          <div class="summary-trend">Verified payments ratio</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon">🔥</div>
+          <div class="summary-label">Today's Entries</div>
+          <div class="summary-value" id="sumToday">0</div>
+          <div class="summary-trend">Submissions today (UTC)</div>
+        </div>
+      </section>
+
+      <!-- Charts Workspace Grid -->
+      <section class="analytics-grid">
+        
+        <!-- 1. Daily Submission Line Chart (Wide Spanned) -->
+        <div class="chart-card wide">
+          <div class="chart-header">
+            <h2 class="chart-title">Daily Response Trend</h2>
+            <p class="chart-subtitle">Submissions trend over the selected date range.</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="dailySubsChart"></canvas>
+            <div class="chart-empty-state">No response data for this period</div>
+          </div>
+          <div class="chart-insight" id="dailyInsight">💡 Submissions trend is loading...</div>
+        </div>
+
+        <!-- 2. Payment status doughnut -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2 class="chart-title">Payment Verification Status</h2>
+            <p class="chart-subtitle">Approved, pending, rejected, and correction-needed responses.</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="paymentStatusChart"></canvas>
+            <div class="chart-empty-state">No payment data yet</div>
+          </div>
+          <div class="chart-insight" id="paymentInsight">💡 Payment distribution insight loading...</div>
+        </div>
+
+        <!-- 3. Collection Overview amounts bar -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2 class="chart-title">Collection Overview</h2>
+            <p class="chart-subtitle">Expected/approved/pending amount grouped by payment status.</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="paymentAmountsChart"></canvas>
+            <div class="chart-empty-state">No amounts recorded</div>
+          </div>
+          <div class="chart-insight" id="collectionInsight">💡 Fee collections breakdown is loading...</div>
+        </div>
+
+        <!-- 4. Registration Progress bar -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2 class="chart-title">Registration Progress</h2>
+            <p class="chart-subtitle">Stages of attendee registration workflows.</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="registrationProgressChart"></canvas>
+            <div class="chart-empty-state">No registration status logs yet</div>
+          </div>
+          <div class="chart-insight" id="regInsight">💡 Workflow states breakdown is loading...</div>
+        </div>
+
+        <!-- 5. Departments Bar -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2 class="chart-title">Responses by Department</h2>
+            <p class="chart-subtitle">Attendee counts grouped by educational department.</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="departmentChart"></canvas>
+            <div class="chart-empty-state">No department values provided</div>
+          </div>
+          <div class="chart-insight" id="deptInsight">💡 Popular departments are loading...</div>
+        </div>
+
+        <!-- 6. Year Doughnut -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2 class="chart-title">Responses by Academic Year</h2>
+            <p class="chart-subtitle">Distributions based on current study year.</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="yearChart"></canvas>
+            <div class="chart-empty-state">No academic year records yet</div>
+          </div>
+          <div class="chart-insight" id="yearInsight">💡 Academic classes breakdown is loading...</div>
+        </div>
+
+        <!-- 7. Hourly Peak hour Bar -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2 class="chart-title">Peak Submission Hours</h2>
+            <p class="chart-subtitle">Hourly distribution showing peak submission volumes (UTC).</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="hourlyPeakChart"></canvas>
+            <div class="chart-empty-state">No hourly activity recorded</div>
+          </div>
+          <div class="chart-insight" id="hourlyInsight">💡 Busiest submission time loading...</div>
+        </div>
+
+        <!-- 8. Top Colleges Horizontal Bar -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2 class="chart-title">Top Colleges</h2>
+            <p class="chart-subtitle">List of 10 colleges with the highest registration counts.</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="topCollegesChart"></canvas>
+            <div class="chart-empty-state">No college distributions recorded</div>
+          </div>
+          <div class="chart-insight" id="collegeInsight">💡 Top colleges ranking is loading...</div>
+        </div>
+
+        <!-- 9. Response edits doughnut -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2 class="chart-title">Response Edit Activity</h2>
+            <p class="chart-subtitle">Proportion of users updating their details after submission.</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="editActivityChart"></canvas>
+            <div class="chart-empty-state">No edits tracked yet</div>
+          </div>
+          <div class="chart-insight" id="editInsight">💡 Detail edits metrics loading...</div>
+        </div>
+
+        <!-- 10. Email status doughnut -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2 class="chart-title">Email Delivery Status</h2>
+            <p class="chart-subtitle">Sent versus failed automated status confirmation email flows.</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="emailStatusChart"></canvas>
+            <div class="chart-empty-state">No email delivery logs recorded</div>
+          </div>
+          <div class="chart-insight" id="emailInsight">💡 Email notification rates are loading...</div>
+        </div>
+
+        <!-- 11. Submission Quality card metrics (Wide spanned) -->
+        <div class="chart-card wide">
+          <div class="chart-header">
+            <h2 class="chart-title">Submission Quality Audits</h2>
+            <p class="chart-subtitle">Integrity summary of database logs, screenshot references, and deduplication states.</p>
+          </div>
+          <div class="quality-grid">
+            <div class="quality-card alert-green" id="qualityScreenshotCard">
+              <div class="quality-val" id="qScreenshotVal">0</div>
+              <div class="quality-label">With Screenshot</div>
+            </div>
+            <div class="quality-card alert-yellow" id="qualityNoScreenshotCard">
+              <div class="quality-val" id="qNoScreenshotVal">0</div>
+              <div class="quality-label">No Screenshot</div>
+            </div>
+            <div class="quality-card alert-red" id="qualityCollegeCard">
+              <div class="quality-val" id="qCollegeVal">0</div>
+              <div class="quality-label">Missing College</div>
+            </div>
+            <div class="quality-card alert-red" id="qualityDeptCard">
+              <div class="quality-val" id="qDeptVal">0</div>
+              <div class="quality-label">Missing Department</div>
+            </div>
+            <div class="quality-card alert-yellow" id="qualityDuplicateCard">
+              <div class="quality-val" id="qDuplicateVal">0</div>
+              <div class="quality-label">Duplicate Emails</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 12. Recent Activity timeline (Wide spanned) -->
+        <div class="chart-card wide">
+          <div class="chart-header">
+            <h2 class="chart-title">Recent Activity Timeline</h2>
+            <p class="chart-subtitle">Real-time audit log flow of submission and administrative verification events.</p>
+          </div>
+          <div class="timeline-container" id="timelineContainer">
+            <!-- Timeline items injected here -->
+            <div style="text-align: center; color: var(--text-muted); padding: 40px; font-size: 13px;">No recent activity logs found.</div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    const CONFIG = {
+      BACKEND_URL:
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+          ? "http://localhost:8000"
+          : "https://forms-project-qcdc.onrender.com"
+    };
+
+    if (
+      !window.location.hostname.includes("localhost") &&
+      !window.location.hostname.includes("127.0.0.1") &&
+      CONFIG.BACKEND_URL.includes("localhost")
+    ) {
+      window.location.href = "/problem.html?reason=production_backend_url_misconfigured";
+    }
+
+    const BACKEND_URL = CONFIG.BACKEND_URL;
+    let adminToken = localStorage.getItem("admin_token");
+
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      toast.className = `toast toast-${type}`;
+      toast.innerText = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    function checkAuth() {
+      if (!adminToken) {
+        window.location.href = "admin-login.html";
+      }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem("admin_token");
+      window.location.href = "admin-login.html";
+    }
+
+    // Duplicate logic for Skeletons count
+    window.addEventListener("DOMContentLoaded", () => {
+      // Replicate skeleton UI for beautiful loader
+      document.querySelectorAll("[rep-count]").forEach(el => {
+        const count = parseInt(el.getAttribute("rep-count"));
+        const parent = el.parentElement;
+        el.removeAttribute("rep-count");
+        for (let i = 1; i < count; i++) {
+          parent.appendChild(el.cloneNode(true));
+        }
+      });
+      
+      checkAuth();
+      loadAnalytics();
+    });
+
+    const charts = {};
+
+    function destroyExistingChart(canvasId) {
+      if (charts[canvasId]) {
+        charts[canvasId].destroy();
+        delete charts[canvasId];
+      }
+    }
+
+    function showEmptyChartState(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const parent = canvas.parentElement;
+      let emptyEl = parent.querySelector('.chart-empty-state');
+      if (!emptyEl) {
+        emptyEl = document.createElement('div');
+        emptyEl.className = 'chart-empty-state';
+        emptyEl.innerHTML = 'No response data';
+        parent.appendChild(emptyEl);
+      }
+      canvas.style.display = 'none';
+      emptyEl.style.display = 'flex';
+    }
+
+    function hideEmptyChartState(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const parent = canvas.parentElement;
+      const emptyEl = parent.querySelector('.chart-empty-state');
+      if (emptyEl) {
+        emptyEl.style.display = 'none';
+      }
+      canvas.style.display = 'block';
+    }
+
+    // Chart Render Functions
+    function renderDoughnutChart(canvasId, dataList, valueKey, labelKey, titleText) {
+      destroyExistingChart(canvasId);
+      if (!dataList || dataList.length === 0 || dataList.every(d => d[valueKey] === 0)) {
+        showEmptyChartState(canvasId);
+        return;
+      }
+      hideEmptyChartState(canvasId);
+
+      const labels = dataList.map(d => d[labelKey]);
+      const values = dataList.map(d => d[valueKey]);
+      const ctx = document.getElementById(canvasId).getContext('2d');
+
+      charts[canvasId] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: values,
+            backgroundColor: [
+              'rgba(99, 102, 241, 0.7)',  // Indigo
+              'rgba(16, 185, 129, 0.7)',  // Green
+              'rgba(245, 158, 11, 0.7)',  // Warning Orange
+              'rgba(239, 68, 68, 0.7)',   // Danger Red
+              'rgba(139, 92, 246, 0.7)',  // Purple
+              'rgba(236, 72, 153, 0.7)'   // Pink
+            ],
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            borderWidth: 1.5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { color: '#e5e7eb', font: { family: 'Inter', size: 11, weight: 500 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const val = context.raw;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                  return `${context.label}: ${val} (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderBarChart(canvasId, dataList, valueKey, labelKey, barLabel, barColor = 'rgba(99, 102, 241, 0.75)', borderColor = 'rgba(99, 102, 241, 1)') {
+      destroyExistingChart(canvasId);
+      if (!dataList || dataList.length === 0 || dataList.every(d => d[valueKey] === 0)) {
+        showEmptyChartState(canvasId);
+        return;
+      }
+      hideEmptyChartState(canvasId);
+
+      const labels = dataList.map(d => d[labelKey]);
+      const values = dataList.map(d => d[valueKey]);
+      const ctx = document.getElementById(canvasId).getContext('2d');
+
+      charts[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: barLabel,
+            data: values,
+            backgroundColor: barColor,
+            borderColor: borderColor,
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { ticks: { color: '#cbd5e1', font: { family: 'Inter', size: 10 } }, grid: { display: false } },
+            y: { ticks: { color: '#cbd5e1', font: { family: 'Inter', size: 10 }, precision: 0 }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+          }
+        }
+      });
+    }
+
+    function renderHorizontalBarChart(canvasId, dataList, valueKey, labelKey, barLabel, barColor = 'rgba(16, 185, 129, 0.75)', borderColor = 'rgba(16, 185, 129, 1)') {
+      destroyExistingChart(canvasId);
+      if (!dataList || dataList.length === 0 || dataList.every(d => d[valueKey] === 0)) {
+        showEmptyChartState(canvasId);
+        return;
+      }
+      hideEmptyChartState(canvasId);
+
+      const labels = dataList.map(d => d[labelKey]);
+      const values = dataList.map(d => d[valueKey]);
+      const ctx = document.getElementById(canvasId).getContext('2d');
+
+      charts[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: barLabel,
+            data: values,
+            backgroundColor: barColor,
+            borderColor: borderColor,
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { ticks: { color: '#cbd5e1', precision: 0 }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+            y: { ticks: { color: '#cbd5e1', font: { family: 'Inter', size: 10 } }, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function renderLineChart(canvasId, dataList, valueKey, labelKey, lineLabel) {
+      destroyExistingChart(canvasId);
+      if (!dataList || dataList.length === 0 || dataList.every(d => d[valueKey] === 0)) {
+        showEmptyChartState(canvasId);
+        return;
+      }
+      hideEmptyChartState(canvasId);
+
+      const labels = dataList.map(d => d[labelKey]);
+      const values = dataList.map(d => d[valueKey]);
+      const ctx = document.getElementById(canvasId).getContext('2d');
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, 'rgba(99, 102, 241, 0.25)');
+      gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+
+      charts[canvasId] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: lineLabel,
+            data: values,
+            fill: true,
+            backgroundColor: gradient,
+            borderColor: 'rgba(99, 102, 241, 1)',
+            borderWidth: 2,
+            tension: 0.35,
+            pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+            pointBorderColor: '#ffffff',
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { ticks: { color: '#cbd5e1', font: { size: 10 } }, grid: { color: 'rgba(255, 255, 255, 0.02)' } },
+            y: { ticks: { color: '#cbd5e1', precision: 0, font: { size: 10 } }, grid: { color: 'rgba(255, 255, 255, 0.06)' } }
+          }
+        }
+      });
+    }
+
+    function renderAmountsBarChart(canvasId, dataList, valueKey, labelKey, barLabel) {
+      destroyExistingChart(canvasId);
+      if (!dataList || dataList.length === 0 || dataList.every(d => d[valueKey] === 0)) {
+        showEmptyChartState(canvasId);
+        return;
+      }
+      hideEmptyChartState(canvasId);
+
+      const labels = dataList.map(d => d[labelKey]);
+      const values = dataList.map(d => d[valueKey]);
+      const ctx = document.getElementById(canvasId).getContext('2d');
+
+      charts[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: barLabel,
+            data: values,
+            backgroundColor: 'rgba(139, 92, 246, 0.75)',
+            borderColor: 'rgba(139, 92, 246, 1)',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `Amount: ₹${context.raw.toLocaleString('en-IN')}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#cbd5e1', font: { size: 10 } }, grid: { display: false } },
+            y: { 
+              ticks: { 
+                color: '#cbd5e1',
+                font: { size: 10 },
+                callback: function(val) {
+                  return '₹' + val.toLocaleString('en-IN');
+                }
+              }, 
+              grid: { color: 'rgba(255, 255, 255, 0.05)' } 
+            }
+          }
+        }
+      });
+    }
+
+    // Load Live Analytics Data
+    async function loadAnalytics() {
+      document.body.classList.add("loading");
+      document.getElementById("errorPanel").style.display = "none";
+      document.getElementById("noDataPanel").style.display = "none";
+
+      const selectedDays = document.getElementById("daysFilter").value;
+      const selectedPaymentStatus = document.getElementById("paymentStatusFilter").value;
+      const selectedDepartment = document.getElementById("departmentFilter").value;
+
+      try {
+        const params = new URLSearchParams();
+        if (selectedDays) params.append("days", selectedDays);
+        if (selectedPaymentStatus && selectedPaymentStatus !== "all") params.append("payment_status", selectedPaymentStatus);
+        if (selectedDepartment && selectedDepartment !== "all") params.append("department", selectedDepartment);
+
+        const response = await fetch(`${BACKEND_URL}/api/admin/analytics/all?${params}`, {
+          headers: {
+            "Authorization": `Bearer ${adminToken}`,
+            "X-Admin-Token": adminToken
+          }
+        });
+
+        if (response.status === 401) {
+          handleLogout();
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("FastAPI Analytics Endpoint Error");
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.message || "Failed to load response data");
+        }
+
+        // Check if there is absolutely no data in DB
+        if (data.summary.total_registrations === 0 && selectedDays === "all" && selectedPaymentStatus === "all" && selectedDepartment === "all") {
+          document.body.classList.remove("loading");
+          document.getElementById("noDataPanel").style.display = "block";
+          return;
+        }
+
+        // Populate unique department list dynamically if it's the first load
+        const deptFilter = document.getElementById("departmentFilter");
+        if (deptFilter.options.length === 1 && data.unique_departments) {
+          data.unique_departments.forEach(dept => {
+            const opt = document.createElement("option");
+            opt.value = dept;
+            opt.innerText = dept;
+            if (selectedDepartment === dept) opt.selected = true;
+            deptFilter.appendChild(opt);
+          });
+        }
+
+        // Render Summary
+        document.getElementById("sumTotal").innerText = data.summary.total_registrations;
+        document.getElementById("sumPending").innerText = data.summary.pending_review;
+        document.getElementById("sumApproved").innerText = data.summary.approved;
+        document.getElementById("sumRejected").innerText = data.summary.rejected;
+        document.getElementById("sumCorrection").innerText = data.summary.needs_correction;
+        document.getElementById("sumToday").innerText = data.summary.today_submissions;
+        document.getElementById("sumApprovalRate").innerText = `${data.summary.approval_rate}%`;
+
+        document.getElementById("ratePending").innerText = `${data.summary.pending_rate}% of submissions`;
+        document.getElementById("rateApproved").innerText = `${data.summary.approval_rate}% approval rate`;
+        document.getElementById("rateRejected").innerText = `${data.summary.rejection_rate}% rejection rate`;
+
+        document.getElementById("sumApprovedAmount").innerText = `₹${data.summary.approved_amount.toLocaleString('en-IN')}`;
+        document.getElementById("sumTotalAmount").innerText = `Expected: ₹${data.summary.total_expected_amount.toLocaleString('en-IN')}`;
+
+        // Render Charts
+        renderLineChart("dailySubsChart", data.daily_submissions, "count", "label", "Submissions");
+        renderDoughnutChart("paymentStatusChart", data.payment_status, "count", "label", "Verification Status");
+        renderAmountsBarChart("paymentAmountsChart", data.payment_amounts, "amount", "label", "Amount");
+        renderBarChart("registrationProgressChart", data.registration_status, "count", "label", "Progress");
+        renderBarChart("departmentChart", data.departments, "count", "label", "Department", "rgba(99, 102, 241, 0.75)", "rgba(99, 102, 241, 1)");
+        renderDoughnutChart("yearChart", data.years, "count", "label", "Year Group");
+        renderBarChart("hourlyPeakChart", data.hourly_submissions, "count", "label", "Submissions", "rgba(245, 158, 11, 0.75)", "rgba(245, 158, 11, 1)");
+        renderHorizontalBarChart("topCollegesChart", data.top_colleges, "count", "label", "Attendees");
+        renderDoughnutChart("editActivityChart", data.edit_activity, "count", "label", "Edits Log");
+        renderDoughnutChart("emailStatusChart", data.email_status, "count", "label", "Notifications");
+
+        // Render Quality Indicators
+        document.getElementById("qScreenshotVal").innerText = data.submission_quality.with_screenshot;
+        document.getElementById("qNoScreenshotVal").innerText = data.submission_quality.without_screenshot;
+        document.getElementById("qCollegeVal").innerText = data.submission_quality.missing_college;
+        document.getElementById("qDeptVal").innerText = data.submission_quality.missing_department;
+        document.getElementById("qDuplicateVal").innerText = data.submission_quality.duplicate_email_count;
+
+        // Visual alerts based on counts
+        toggleQualityStyle("qualityCollegeCard", data.submission_quality.missing_college, 0, 3);
+        toggleQualityStyle("qualityDeptCard", data.submission_quality.missing_department, 0, 3);
+        toggleQualityStyle("qualityDuplicateCard", data.submission_quality.duplicate_email_count, 0, 5);
+
+        // Render Recent Activity Timeline
+        const timelineEl = document.getElementById("timelineContainer");
+        timelineEl.innerHTML = "";
+        if (data.recent_activity && data.recent_activity.length > 0) {
+          data.recent_activity.forEach(act => {
+            timelineEl.innerHTML += `
+              <div class="timeline-item">
+                <div class="timeline-badge badge-${act.type}">
+                  ${getBadgeIcon(act.type)}
+                </div>
+                <div class="timeline-content">
+                  <div class="timeline-meta">
+                    <span class="timeline-user">${escapeHtml(act.name)}</span>
+                    <span class="timeline-time">${act.time}</span>
+                  </div>
+                  <div class="timeline-message">${escapeHtml(act.message)}</div>
+                </div>
+              </div>
+            `;
+          });
+        } else {
+          timelineEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 40px; font-size: 13px;">No recent activity logged.</div>`;
+        }
+
+        // Compute Dynamic Insights
+        renderInsights(data);
+
+        document.body.classList.remove("loading");
+      } catch (err) {
+        console.error(err);
+        document.body.classList.remove("loading");
+        
+        if (err.message && err.message.includes("Failed to fetch")) {
+          window.location.href = "/problem.html?reason=analytics_backend_unreachable";
+        } else {
+          document.getElementById("errorMessage").innerText = "Unable to load analytics data";
+          document.getElementById("errorPanel").style.display = "block";
+        }
+      }
+    }
+
+    function handleFilterChange() {
+      loadAnalytics();
+    }
+
+    function toggleQualityStyle(cardId, count, idealMin, warningThreshold) {
+      const el = document.getElementById(cardId);
+      if (!el) return;
+      el.className = "quality-card";
+      if (count === idealMin) {
+        el.classList.add("alert-green");
+      } else if (count > warningThreshold) {
+        el.classList.add("alert-red");
+      } else {
+        el.classList.add("alert-yellow");
+      }
+    }
+
+    function getBadgeIcon(actionType) {
+      switch (actionType) {
+        case "SUBMITTED": return "📝";
+        case "APPROVED": return "✅";
+        case "REJECTED": return "❌";
+        case "EDITED": return "✏️";
+        case "NEEDS_CORRECTION": return "🔧";
+        default: return "🔔";
+      }
+    }
+
+    async function exportCSV() {
+      checkAuth();
+      const selectedDays = document.getElementById("daysFilter").value;
+      const selectedPaymentStatus = document.getElementById("paymentStatusFilter").value;
+      const selectedDepartment = document.getElementById("departmentFilter").value;
+
+      const params = new URLSearchParams();
+      if (selectedDays) params.append("days", selectedDays);
+      if (selectedPaymentStatus && selectedPaymentStatus !== "all") params.append("payment_status", selectedPaymentStatus);
+      if (selectedDepartment && selectedDepartment !== "all") params.append("department", selectedDepartment);
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/analytics/export.csv?${params}`, {
+          headers: {
+            "Authorization": `Bearer ${adminToken}`,
+            "X-Admin-Token": adminToken
+          }
+        });
+
+        if (response.status === 401) {
+          handleLogout();
+          return;
+        }
+
+        if (!response.ok) throw new Error("CSV compilation failed");
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const dateStr = new Date().toISOString().split('T')[0];
+        a.download = `analytics-summary-${dateStr}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        showToast("Analytics report CSV downloaded successfully", "success");
+      } catch (err) {
+        console.error(err);
+        showToast("Error compiling CSV analytics report", "danger");
+      }
+    }
+
+    // Dynamic Insight Generator Logic
+    function renderInsights(data) {
+      // 1. Payment status
+      const paymentInsightEl = document.getElementById('paymentInsight');
+      if (data.payment_status && data.payment_status.length > 0) {
+        const sorted = [...data.payment_status].sort((a, b) => b.count - a.count);
+        const top = sorted[0];
+        if (top.count > 0) {
+          paymentInsightEl.innerText = `💡 ${top.label} payments represent ${top.percentage}% of all responses.`;
+        } else {
+          paymentInsightEl.innerText = "💡 No payment verification data available.";
+        }
+      }
+
+      // 2. Progress
+      const regInsightEl = document.getElementById('regInsight');
+      if (data.registration_status && data.registration_status.length > 0) {
+        const sorted = [...data.registration_status].sort((a, b) => b.count - a.count);
+        const top = sorted[0];
+        if (top.count > 0) {
+          regInsightEl.innerText = `💡 Most registrations are currently in "${top.label}" status (${top.count} submissions).`;
+        } else {
+          regInsightEl.innerText = "💡 No registration progress metrics.";
+        }
+      }
+
+      // 3. Departments
+      const deptInsightEl = document.getElementById('deptInsight');
+      if (data.departments && data.departments.length > 0) {
+        const filtered = data.departments.filter(d => d.department !== 'Not Provided');
+        const sorted = filtered.length > 0 ? filtered : data.departments;
+        const top = sorted.sort((a, b) => b.count - a.count)[0];
+        if (top && top.count > 0) {
+          deptInsightEl.innerText = `💡 Most registrations are from ${top.label} (${top.count} responses).`;
+        } else {
+          deptInsightEl.innerText = "💡 No department trends available yet.";
+        }
+      }
+
+      // 4. Year
+      const yearInsightEl = document.getElementById('yearInsight');
+      if (data.years && data.years.length > 0) {
+        const filtered = data.years.filter(y => y.year !== 'Not Provided');
+        const sorted = filtered.length > 0 ? filtered : data.years;
+        const top = sorted.sort((a, b) => b.count - a.count)[0];
+        if (top && top.count > 0) {
+          yearInsightEl.innerText = `💡 Academic year "${top.label}" has the highest count (${top.count} responses).`;
+        } else {
+          yearInsightEl.innerText = "💡 No study year trends available.";
+        }
+      }
+
+      // 5. Daily submissions
+      const dailyInsightEl = document.getElementById('dailyInsight');
+      if (data.daily_submissions && data.daily_submissions.length > 0) {
+        const sorted = [...data.daily_submissions].sort((a, b) => b.count - a.count);
+        const top = sorted[0];
+        if (top && top.count > 0) {
+          dailyInsightEl.innerText = `💡 Peak submission day was ${top.label} with ${top.count} registrations.`;
+        } else {
+          dailyInsightEl.innerText = "💡 Daily trend metrics not yet calculated.";
+        }
+      }
+
+      // 6. Hourly peak
+      const hourlyInsightEl = document.getElementById('hourlyInsight');
+      if (data.hourly_submissions && data.hourly_submissions.length > 0) {
+        const sorted = [...data.hourly_submissions].sort((a, b) => b.count - a.count);
+        const top = sorted[0];
+        if (top && top.count > 0) {
+          hourlyInsightEl.innerText = `💡 Peak submission hour is ${top.label} UTC (${top.count} responses).`;
+        } else {
+          hourlyInsightEl.innerText = "💡 Hourly peak metrics not yet calculated.";
+        }
+      }
+
+      // 7. Expected Amounts
+      const collectionInsightEl = document.getElementById('collectionInsight');
+      if (data.payment_amounts && data.payment_amounts.length > 0) {
+        const approved = data.payment_amounts.find(p => p.status === 'APPROVED');
+        const approvedVal = approved ? approved.amount : 0;
+        const totalAmt = data.summary.total_expected_amount || 0;
+        if (totalAmt > 0) {
+          const pct = ((approvedVal / totalAmt) * 100).toFixed(1);
+          collectionInsightEl.innerText = `💡 Approved payments represent ${pct}% of total expected collections (₹${approvedVal.toLocaleString('en-IN')}).`;
+        } else {
+          collectionInsightEl.innerText = "💡 Amounts summary is zero.";
+        }
+      }
+
+      // 8. Top Colleges
+      const collegeInsightEl = document.getElementById('collegeInsight');
+      if (data.top_colleges && data.top_colleges.length > 0) {
+        const filtered = data.top_colleges.filter(c => c.college !== 'Not Provided');
+        const sorted = filtered.length > 0 ? filtered : data.top_colleges;
+        const top = sorted.sort((a, b) => b.count - a.count)[0];
+        if (top && top.count > 0) {
+          collegeInsightEl.innerText = `💡 ${top.label} has the highest registration count with ${top.count} responses.`;
+        } else {
+          collegeInsightEl.innerText = "💡 Top college trends are not yet established.";
+        }
+      }
+
+      // 9. Edits
+      const editInsightEl = document.getElementById('editInsight');
+      if (data.edit_activity && data.edit_activity.length > 0) {
+        const never = data.edit_activity.find(e => e.bucket === 'Never Edited');
+        if (never && never.count > 0 && data.summary.total_registrations > 0) {
+          const pct = ((never.count / data.summary.total_registrations) * 100).toFixed(1);
+          editInsightEl.innerText = `💡 ${pct}% of responses were never edited after submission.`;
+        } else {
+          editInsightEl.innerText = "💡 Response edits tracking matches expectations.";
+        }
+      }
+
+      // 10. EmailStatus
+      const emailInsightEl = document.getElementById('emailInsight');
+      if (data.email_status && data.email_status.length > 0) {
+        const sent = data.email_status.find(e => e.status === 'SENT');
+        const percentage = sent ? sent.percentage : 0;
+        if (percentage > 0) {
+          emailInsightEl.innerText = `💡 Automated submission confirmations are ${percentage}% successfully delivered.`;
+        } else {
+          emailInsightEl.innerText = "💡 Automated email updates delivery is pending.";
+        }
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return "";
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>

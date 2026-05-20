@@ -11,6 +11,7 @@
     { "source": "/admin-login", "destination": "/admin-login.html" },
     { "source": "/admin-dashboard", "destination": "/admin-dashboard.html" },
     { "source": "/admin-detail", "destination": "/admin-detail.html" },
+    { "source": "/admin-analytics", "destination": "/admin-analytics.html" },
     { "source": "/problem", "destination": "/problem.html" }
   ]
 }

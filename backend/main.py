@@ -8,7 +8,7 @@ from fastapi import FastAPI, Depends, Request, HTTPException, status, Response, 
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import case, desc
+from sqlalchemy import case, desc, func
 
 import config
 import models
@@ -1151,3 +1151,748 @@ async def admin_export_csv(
         "Content-type": "text/csv"
     }
     return Response(content=csv_data, headers=headers)
+
+# --- RESPONSE ANALYTICS ROUTING AND AGGREGATIONS ---
+
+def apply_analytics_filters(query, model, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    if days and days != "all":
+        try:
+            days_int = int(days)
+            start_date = datetime.datetime.utcnow() - datetime.timedelta(days=days_int)
+            query = query.filter(model.created_at >= start_date)
+        except ValueError:
+            pass
+    if payment_status and payment_status != "all":
+        query = query.filter(model.payment_status == payment_status)
+    if department and department != "all":
+        query = query.filter(model.department == department)
+    return query
+
+def get_analytics_summary_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    q = db.query(models.EventRegistration)
+    q = apply_analytics_filters(q, models.EventRegistration, days, payment_status, department)
+    
+    total = q.count()
+    if total == 0:
+        return {
+            "total_registrations": 0,
+            "pending_review": 0,
+            "approved": 0,
+            "rejected": 0,
+            "needs_correction": 0,
+            "today_submissions": 0,
+            "total_expected_amount": 0,
+            "approved_amount": 0,
+            "pending_amount": 0,
+            "rejected_amount": 0,
+            "approval_rate": 0.0,
+            "pending_rate": 0.0,
+            "rejection_rate": 0.0
+        }
+
+    pending = q.filter(models.EventRegistration.payment_status == "PENDING_REVIEW").count()
+    approved = q.filter(models.EventRegistration.payment_status == "APPROVED").count()
+    rejected = q.filter(models.EventRegistration.payment_status == "REJECTED").count()
+    needs_correction = q.filter(models.EventRegistration.payment_status == "NEEDS_CORRECTION").count()
+    
+    today_start = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_submissions = q.filter(models.EventRegistration.created_at >= today_start).count()
+    
+    total_expected_amount = db.query(func.coalesce(func.sum(models.EventRegistration.amount), 0)).filter(
+        models.EventRegistration.id.in_(q.with_entities(models.EventRegistration.id))
+    ).scalar()
+    
+    approved_amount = db.query(func.coalesce(func.sum(models.EventRegistration.amount), 0)).filter(
+        models.EventRegistration.id.in_(q.with_entities(models.EventRegistration.id)),
+        models.EventRegistration.payment_status == "APPROVED"
+    ).scalar()
+    
+    pending_amount = db.query(func.coalesce(func.sum(models.EventRegistration.amount), 0)).filter(
+        models.EventRegistration.id.in_(q.with_entities(models.EventRegistration.id)),
+        models.EventRegistration.payment_status == "PENDING_REVIEW"
+    ).scalar()
+    
+    rejected_amount = db.query(func.coalesce(func.sum(models.EventRegistration.amount), 0)).filter(
+        models.EventRegistration.id.in_(q.with_entities(models.EventRegistration.id)),
+        models.EventRegistration.payment_status == "REJECTED"
+    ).scalar()
+    
+    return {
+        "total_registrations": total,
+        "pending_review": pending,
+        "approved": approved,
+        "rejected": rejected,
+        "needs_correction": needs_correction,
+        "today_submissions": today_submissions,
+        "total_expected_amount": int(total_expected_amount),
+        "approved_amount": int(approved_amount),
+        "pending_amount": int(pending_amount),
+        "rejected_amount": int(rejected_amount),
+        "approval_rate": round((approved / total * 100), 2),
+        "pending_rate": round((pending / total * 100), 2),
+        "rejection_rate": round((rejected / total * 100), 2)
+    }
+
+def get_status_distribution_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    q = db.query(
+        models.EventRegistration.payment_status,
+        func.count(models.EventRegistration.id).label("count")
+    )
+    q = apply_analytics_filters(q, models.EventRegistration, days, payment_status, department)
+    q = q.group_by(models.EventRegistration.payment_status).all()
+    
+    labels_map = {
+        "PENDING_REVIEW": "Pending Review",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "NEEDS_CORRECTION": "Needs Correction"
+    }
+    
+    counts_map = {k: 0 for k in labels_map.keys()}
+    total = 0
+    for row in q:
+        if row.payment_status in counts_map:
+            counts_map[row.payment_status] = row.count
+            total += row.count
+            
+    res = []
+    for k, v in counts_map.items():
+        res.append({
+            "status": k,
+            "label": labels_map[k],
+            "count": v,
+            "percentage": round((v / total * 100), 2) if total > 0 else 0.0
+        })
+    return res
+
+def get_registration_status_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    q = db.query(
+        models.EventRegistration.registration_status,
+        func.count(models.EventRegistration.id).label("count")
+    )
+    q = apply_analytics_filters(q, models.EventRegistration, days, payment_status, department)
+    q = q.group_by(models.EventRegistration.registration_status).all()
+    
+    labels_map = {
+        "SUBMITTED": "Submitted",
+        "UPDATED": "Updated",
+        "CONFIRMED": "Confirmed",
+        "REJECTED": "Rejected",
+        "CANCELLED": "Cancelled"
+    }
+    
+    counts_map = {k: 0 for k in labels_map.keys()}
+    total = 0
+    for row in q:
+        status_key = row.registration_status or "SUBMITTED"
+        if status_key in counts_map:
+            counts_map[status_key] = row.count
+            total += row.count
+        else:
+            counts_map[status_key] = row.count
+            total += row.count
+            labels_map[status_key] = status_key.replace("_", " ").title()
+            
+    res = []
+    for k, v in counts_map.items():
+        res.append({
+            "status": k,
+            "label": labels_map.get(k, k),
+            "count": v,
+            "percentage": round((v / total * 100), 2) if total > 0 else 0.0
+        })
+    return res
+
+def get_department_distribution_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    dept_expr = func.coalesce(func.nullif(func.trim(models.EventRegistration.department), ""), "Not Provided")
+    q = db.query(
+        dept_expr.label("dept"),
+        func.count(models.EventRegistration.id).label("count")
+    )
+    q = apply_analytics_filters(q, models.EventRegistration, days, payment_status, department)
+    q = q.group_by(dept_expr).order_by(desc("count")).all()
+    
+    total = sum(row.count for row in q)
+    res = []
+    for row in q:
+        res.append({
+            "department": row.dept,
+            "label": row.dept,
+            "count": row.count,
+            "percentage": round((row.count / total * 100), 2) if total > 0 else 0.0
+        })
+    return res
+
+def get_year_distribution_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    year_expr = func.coalesce(func.nullif(func.trim(models.EventRegistration.year), ""), "Not Provided")
+    q = db.query(
+        year_expr.label("year_label"),
+        func.count(models.EventRegistration.id).label("count")
+    )
+    q = apply_analytics_filters(q, models.EventRegistration, days, payment_status, department)
+    q = q.group_by(year_expr).order_by(desc("count")).all()
+    
+    total = sum(row.count for row in q)
+    res = []
+    for row in q:
+        res.append({
+            "year": row.year_label,
+            "label": row.year_label,
+            "count": row.count,
+            "percentage": round((row.count / total * 100), 2) if total > 0 else 0.0
+        })
+    return res
+
+def get_daily_submissions_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    days_limit = 14
+    if days and days != "all":
+        try:
+            days_limit = int(days)
+        except ValueError:
+            pass
+
+    today = datetime.date.today()
+    if days == "all":
+        min_date_row = db.query(func.min(func.date(models.EventRegistration.created_at))).scalar()
+        if min_date_row:
+            if isinstance(min_date_row, str):
+                min_date = datetime.datetime.strptime(min_date_row, "%Y-%m-%d").date()
+            else:
+                min_date = min_date_row
+            days_limit = (today - min_date).days + 1
+            if days_limit < 1:
+                days_limit = 1
+        else:
+            days_limit = 30
+
+    date_list = [today - datetime.timedelta(days=x) for x in range(days_limit)]
+    date_list.reverse()
+
+    daily_counts = {d.strftime("%Y-%m-%d"): 0 for d in date_list}
+
+    q = db.query(
+        func.date(models.EventRegistration.created_at).label("date"),
+        func.count(models.EventRegistration.id).label("count")
+    )
+    if days and days != "all":
+        start_date = datetime.datetime.utcnow() - datetime.timedelta(days=days_limit)
+        q = q.filter(models.EventRegistration.created_at >= start_date)
+
+    if payment_status and payment_status != "all":
+        q = q.filter(models.EventRegistration.payment_status == payment_status)
+    if department and department != "all":
+        q = q.filter(models.EventRegistration.department == department)
+
+    q = q.group_by(func.date(models.EventRegistration.created_at)).all()
+
+    for row in q:
+        date_str = str(row.date)
+        if date_str in daily_counts:
+            daily_counts[date_str] = row.count
+        elif days == "all":
+            daily_counts[date_str] = row.count
+
+    res = []
+    for d_str, count in daily_counts.items():
+        try:
+            dt = datetime.datetime.strptime(d_str, "%Y-%m-%d")
+            label = dt.strftime("%b %e").replace("  ", " ")
+        except Exception:
+            label = d_str
+        res.append({
+            "date": d_str,
+            "label": label,
+            "count": count
+        })
+    return res
+
+def get_hourly_submissions_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    hourly_counts = {h: 0 for h in range(24)}
+
+    q = db.query(
+        func.hour(models.EventRegistration.created_at).label("hour"),
+        func.count(models.EventRegistration.id).label("count")
+    )
+    q = apply_analytics_filters(q, models.EventRegistration, days, payment_status, department)
+    q = q.group_by(func.hour(models.EventRegistration.created_at)).all()
+
+    for row in q:
+        if row.hour is not None:
+            hourly_counts[int(row.hour)] = row.count
+
+    res = []
+    for h in range(24):
+        label = f"{h:02d}:00"
+        res.append({
+            "hour": h,
+            "label": label,
+            "count": hourly_counts[h]
+        })
+    return res
+
+def get_payment_amounts_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    q = db.query(
+        models.EventRegistration.payment_status,
+        func.coalesce(func.sum(models.EventRegistration.amount), 0).label("amount")
+    )
+    q = apply_analytics_filters(q, models.EventRegistration, days, payment_status, department)
+    q = q.group_by(models.EventRegistration.payment_status).all()
+
+    labels_map = {
+        "APPROVED": "Approved",
+        "PENDING_REVIEW": "Pending Review",
+        "REJECTED": "Rejected",
+        "NEEDS_CORRECTION": "Needs Correction"
+    }
+
+    amounts_map = {k: 0 for k in labels_map.keys()}
+    for row in q:
+        if row.payment_status in amounts_map:
+            amounts_map[row.payment_status] = int(row.amount)
+
+    res = []
+    for k, v in amounts_map.items():
+        res.append({
+            "status": k,
+            "label": labels_map[k],
+            "amount": v
+        })
+    return res
+
+def get_top_colleges_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None, limit: int = 10):
+    college_expr = func.coalesce(func.nullif(func.trim(models.EventRegistration.college), ""), "Not Provided")
+    q = db.query(
+        college_expr.label("college_label"),
+        func.count(models.EventRegistration.id).label("count")
+    )
+    q = apply_analytics_filters(q, models.EventRegistration, days, payment_status, department)
+    q = q.group_by(college_expr).order_by(desc("count")).limit(limit).all()
+
+    res = []
+    for row in q:
+        res.append({
+            "college": row.college_label,
+            "label": row.college_label,
+            "count": row.count
+        })
+    return res
+
+def get_edit_activity_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    bucket_expr = case(
+        (models.EventRegistration.edit_count == 0, "Never Edited"),
+        (models.EventRegistration.edit_count == 1, "Edited Once"),
+        else_="Edited Multiple Times"
+    )
+    q = db.query(
+        bucket_expr.label("bucket"),
+        func.count(models.EventRegistration.id).label("count")
+    )
+    q = apply_analytics_filters(q, models.EventRegistration, days, payment_status, department)
+    q = q.group_by(bucket_expr).all()
+
+    edit_activity_counts = {
+        "Never Edited": 0,
+        "Edited Once": 0,
+        "Edited Multiple Times": 0
+    }
+    for row in q:
+        if row.bucket in edit_activity_counts:
+            edit_activity_counts[row.bucket] = row.count
+
+    res = []
+    for b, count in edit_activity_counts.items():
+        res.append({
+            "bucket": b,
+            "label": b,
+            "count": count
+        })
+    return res
+
+def get_email_status_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    q = db.query(
+        func.coalesce(models.EventRegistration.email_status, "NOT_SENT").label("status"),
+        func.count(models.EventRegistration.id).label("count")
+    )
+    q = apply_analytics_filters(q, models.EventRegistration, days, payment_status, department)
+    q = q.group_by(func.coalesce(models.EventRegistration.email_status, "NOT_SENT")).all()
+
+    total = sum(row.count for row in q)
+    res = []
+    for row in q:
+        label_val = row.status.replace("_", " ").title()
+        res.append({
+            "status": row.status,
+            "label": label_val,
+            "count": row.count,
+            "percentage": round((row.count / total * 100), 2) if total > 0 else 0.0
+        })
+    return res
+
+def get_submission_quality_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    base_q = db.query(models.EventRegistration.id)
+    base_q = apply_analytics_filters(base_q, models.EventRegistration, days, payment_status, department)
+    filtered_ids = base_q.all()
+    id_list = [r[0] for r in filtered_ids]
+
+    if not id_list:
+        return {
+            "with_screenshot": 0,
+            "without_screenshot": 0,
+            "missing_college": 0,
+            "missing_department": 0,
+            "duplicate_email_count": 0
+        }
+
+    q = db.query(models.EventRegistration).filter(models.EventRegistration.id.in_(id_list))
+    
+    with_screenshot = q.filter(models.EventRegistration.payment_screenshot_filename.isnot(None)).count()
+    without_screenshot = q.filter(models.EventRegistration.payment_screenshot_filename.is_(None)).count()
+    
+    missing_college = q.filter(
+        (models.EventRegistration.college.is_(None)) | 
+        (func.trim(models.EventRegistration.college) == "")
+    ).count()
+    
+    missing_department = q.filter(
+        (models.EventRegistration.department.is_(None)) | 
+        (func.trim(models.EventRegistration.department) == "")
+    ).count()
+
+    email_query = db.query(models.EventRegistration.email).filter(
+        models.EventRegistration.id.in_(id_list)
+    ).group_by(models.EventRegistration.email).having(func.count(models.EventRegistration.id) > 1)
+    
+    duplicate_email_count = db.query(func.count(models.EventRegistration.id)).filter(
+        models.EventRegistration.id.in_(id_list),
+        models.EventRegistration.email.in_(email_query)
+    ).scalar() or 0
+
+    return {
+        "with_screenshot": with_screenshot,
+        "without_screenshot": without_screenshot,
+        "missing_college": missing_college,
+        "missing_department": missing_department,
+        "duplicate_email_count": int(duplicate_email_count)
+    }
+
+def get_recent_activity_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
+    reg_q = db.query(models.EventRegistration.registration_id)
+    reg_q = apply_analytics_filters(reg_q, models.EventRegistration, days, payment_status, department)
+    reg_ids = [r[0] for r in reg_q.all()]
+
+    if not reg_ids:
+        return []
+
+    q = db.query(
+        models.RegistrationAuditLog.created_at,
+        models.RegistrationAuditLog.action,
+        models.RegistrationAuditLog.registration_id,
+        models.EventRegistration.full_name
+    ).join(
+        models.EventRegistration,
+        models.EventRegistration.registration_id == models.RegistrationAuditLog.registration_id,
+        isouter=True
+    ).filter(
+        models.RegistrationAuditLog.registration_id.in_(reg_ids)
+    ).order_by(desc(models.RegistrationAuditLog.created_at)).limit(10).all()
+
+    res = []
+    for row in q:
+        name = row.full_name or "Unknown User"
+        action = row.action
+        msg = f"Registration {row.registration_id} was {action.lower()}"
+        if action == "SUBMITTED":
+            msg = f"New registration submitted by {name}"
+        elif action == "EDITED":
+            msg = f"Registration details updated by {name}"
+        elif action == "APPROVED":
+            msg = f"Payment approved by admin for {name}"
+        elif action == "REJECTED":
+            msg = f"Registration rejected by admin for {name}"
+        elif action == "NEEDS_CORRECTION":
+            msg = f"Registration marked for correction by admin for {name}"
+
+        res.append({
+            "time": row.created_at.strftime("%Y-%m-%d %H:%M"),
+            "type": row.action,
+            "registration_id": row.registration_id,
+            "name": name,
+            "message": msg
+        })
+    return res
+
+@app.get("/api/admin/analytics/summary")
+async def get_analytics_summary(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    summary = get_analytics_summary_data(db, days, payment_status, department)
+    return {"success": True, "summary": summary}
+
+@app.get("/api/admin/analytics/status-distribution")
+async def get_status_distribution(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_status_distribution_data(db, days, payment_status, department)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/registration-status")
+async def get_registration_status(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_registration_status_data(db, days, payment_status, department)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/department-distribution")
+async def get_department_distribution(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_department_distribution_data(db, days, payment_status, department)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/year-distribution")
+async def get_year_distribution(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_year_distribution_data(db, days, payment_status, department)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/daily-submissions")
+async def get_daily_submissions(
+    days: Optional[str] = "14",
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_daily_submissions_data(db, days, payment_status, department)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/hourly-submissions")
+async def get_hourly_submissions(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_hourly_submissions_data(db, days, payment_status, department)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/payment-amounts")
+async def get_payment_amounts(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_payment_amounts_data(db, days, payment_status, department)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/top-colleges")
+async def get_top_colleges(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_top_colleges_data(db, days, payment_status, department, limit)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/edit-activity")
+async def get_edit_activity(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_edit_activity_data(db, days, payment_status, department)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/email-status")
+async def get_email_status(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_email_status_data(db, days, payment_status, department)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/submission-quality")
+async def get_submission_quality(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_submission_quality_data(db, days, payment_status, department)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/recent-activity")
+async def get_recent_activity(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    data = get_recent_activity_data(db, days, payment_status, department)
+    return {"success": True, "data": data}
+
+@app.get("/api/admin/analytics/all")
+async def get_all_analytics(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    summary = get_analytics_summary_data(db, days, payment_status, department)
+    status_dist = get_status_distribution_data(db, days, payment_status, department)
+    reg_status = get_registration_status_data(db, days, payment_status, department)
+    departments_dist = get_department_distribution_data(db, days, payment_status, department)
+    years_dist = get_year_distribution_data(db, days, payment_status, department)
+    daily_subs = get_daily_submissions_data(db, days, payment_status, department)
+    hourly_subs = get_hourly_submissions_data(db, days, payment_status, department)
+    pmt_amts = get_payment_amounts_data(db, days, payment_status, department)
+    top_colleges_list = get_top_colleges_data(db, days, payment_status, department, limit=10)
+    edit_act = get_edit_activity_data(db, days, payment_status, department)
+    email_stat = get_email_status_data(db, days, payment_status, department)
+    sub_quality = get_submission_quality_data(db, days, payment_status, department)
+    recent_act = get_recent_activity_data(db, days, payment_status, department)
+    
+    all_depts_q = db.query(models.EventRegistration.department).distinct().all()
+    unique_departments = sorted(list(set(d[0].strip() for d in all_depts_q if d[0] and d[0].strip())))
+
+    return {
+        "success": True,
+        "summary": summary,
+        "payment_status": status_dist,
+        "registration_status": reg_status,
+        "departments": departments_dist,
+        "years": years_dist,
+        "daily_submissions": daily_subs,
+        "hourly_submissions": hourly_subs,
+        "payment_amounts": pmt_amts,
+        "top_colleges": top_colleges_list,
+        "edit_activity": edit_act,
+        "email_status": email_stat,
+        "submission_quality": sub_quality,
+        "recent_activity": recent_act,
+        "unique_departments": unique_departments
+    }
+
+@app.get("/api/admin/analytics/export.csv")
+async def get_analytics_csv(
+    days: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    department: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    summary = get_analytics_summary_data(db, days, payment_status, department)
+    status_dist = get_status_distribution_data(db, days, payment_status, department)
+    reg_status = get_registration_status_data(db, days, payment_status, department)
+    departments_dist = get_department_distribution_data(db, days, payment_status, department)
+    years_dist = get_year_distribution_data(db, days, payment_status, department)
+    daily_subs = get_daily_submissions_data(db, days, payment_status, department)
+    top_colleges_list = get_top_colleges_data(db, days, payment_status, department, limit=10)
+    email_stat = get_email_status_data(db, days, payment_status, department)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow(["=== RESPONSE ANALYTICS SUMMARY ==="])
+    writer.writerow(["Metric", "Value"])
+    writer.writerow(["Total Registrations", summary["total_registrations"]])
+    writer.writerow(["Pending Review", summary["pending_review"]])
+    writer.writerow(["Approved", summary["approved"]])
+    writer.writerow(["Rejected", summary["rejected"]])
+    writer.writerow(["Needs Correction", summary["needs_correction"]])
+    writer.writerow(["Today's Submissions", summary["today_submissions"]])
+    writer.writerow(["Total Expected Amount", f"Rs. {summary['total_expected_amount']}"])
+    writer.writerow(["Approved Amount", f"Rs. {summary['approved_amount']}"])
+    writer.writerow(["Pending Amount", f"Rs. {summary['pending_amount']}"])
+    writer.writerow(["Rejected Amount", f"Rs. {summary['rejected_amount']}"])
+    writer.writerow(["Approval Rate", f"{summary['approval_rate']}%"])
+    writer.writerow(["Pending Rate", f"{summary['pending_rate']}%"])
+    writer.writerow(["Rejection Rate", f"{summary['rejection_rate']}%"])
+    writer.writerow([])
+
+    writer.writerow(["=== PAYMENT STATUS DISTRIBUTION ==="])
+    writer.writerow(["Status", "Label", "Count", "Percentage"])
+    for row in status_dist:
+        writer.writerow([row["status"], row["label"], row["count"], f"{row['percentage']}%"])
+    writer.writerow([])
+
+    writer.writerow(["=== REGISTRATION PROGRESS ==="])
+    writer.writerow(["Status", "Label", "Count", "Percentage"])
+    for row in reg_status:
+        writer.writerow([row["status"], row["label"], row["count"], f"{row['percentage']}%"])
+    writer.writerow([])
+
+    writer.writerow(["=== DEPARTMENT DISTRIBUTION ==="])
+    writer.writerow(["Department", "Count", "Percentage"])
+    for row in departments_dist:
+        writer.writerow([row["department"], row["count"], f"{row['percentage']}%"])
+    writer.writerow([])
+
+    writer.writerow(["=== ACADEMIC YEAR DISTRIBUTION ==="])
+    writer.writerow(["Year", "Count", "Percentage"])
+    for row in years_dist:
+        writer.writerow([row["year"], row["count"], f"{row['percentage']}%"])
+    writer.writerow([])
+
+    writer.writerow(["=== DAILY RESPONSE TREND ==="])
+    writer.writerow(["Date", "Label", "Count"])
+    for row in daily_subs:
+        writer.writerow([row["date"], row["label"], row["count"]])
+    writer.writerow([])
+
+    writer.writerow(["=== TOP COLLEGES ==="])
+    writer.writerow(["College", "Count"])
+    for row in top_colleges_list:
+        writer.writerow([row["college"], row["count"]])
+    writer.writerow([])
+
+    writer.writerow(["=== EMAIL DELIVERY STATUS ==="])
+    writer.writerow(["Status", "Label", "Count", "Percentage"])
+    for row in email_stat:
+        writer.writerow([row["status"], row["label"], row["count"], f"{row['percentage']}%"])
+
+    csv_data = output.getvalue()
+    output.close()
+
+    date_str = datetime.date.today().strftime("%Y-%m-%d")
+    headers = {
+        "Content-Disposition": f"attachment; filename=analytics-summary-{date_str}.csv",
+        "Content-type": "text/csv"
+    }
+    return Response(content=csv_data, headers=headers)
+

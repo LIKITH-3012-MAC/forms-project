@@ -314,6 +314,43 @@
       from { transform: translateX(100%); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
+
+    /* Analytics Card styling */
+    .analytics-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .analytics-card h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+    .analytics-card p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .analytics-card-info {
+      flex-grow: 1;
+    }
+    @media (max-width: 640px) {
+      .analytics-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+      }
+      .analytics-card .neo-btn {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -322,6 +359,7 @@
       SAKRA VISION <span>Admin Panel</span>
     </div>
     <div class="admin-controls">
+      <a href="/admin-analytics.html" class="neo-btn neo-btn-primary">View Graphs 📊</a>
       <button class="neo-btn neo-btn-secondary" onclick="exportCSV()">Export CSV</button>
       <button class="neo-btn neo-btn-secondary" onclick="handleLogout()">Logout</button>
     </div>
@@ -355,6 +393,17 @@
         <div class="stat-value" id="statToday">0</div>
       </div>
     </div>
+
+    <!-- Analytics Promotion Card -->
+    <section class="admin-card analytics-card">
+      <div class="analytics-card-info">
+        <h3>Analytics</h3>
+        <p>View Google Forms-style response graphs from live registration data.</p>
+      </div>
+      <a class="neo-btn neo-btn-primary" href="/admin-analytics.html">
+        Open Analytics
+      </a>
+    </section>
 
     <!-- Filter Block -->
     <div class="filter-bar">
