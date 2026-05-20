@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+sqlalchemy
+pymysql
+pydantic
+email-validator
+resend
+python-multipart
+itsdangerous

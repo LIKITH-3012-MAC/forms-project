@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: event-registration-fastapi
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_NAME
+        value: "Event Registration System"
+      - key: ENVIRONMENT
+        value: production
+      - key: ALLOW_DUPLICATE_EMAIL
+        value: "false"
+      - key: LOCK_EDIT_AFTER_APPROVAL
+        value: "true"
