@@ -21,6 +21,34 @@ from utils import generate_registration_id, generate_secure_token, escape_html
 # Initialize tables
 models.Base.metadata.create_all(bind=engine)
 
+# Auto-migration: check columns for payment screenshot blobs
+try:
+    with engine.connect() as conn:
+        from sqlalchemy import text
+        result = conn.execute(text("SHOW COLUMNS FROM event_registrations"))
+        existing_cols = [row[0].lower() for row in result.fetchall()]
+        
+        # Add columns if missing
+        if "payment_screenshot_blob" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN payment_screenshot_blob LONGBLOB"))
+            print("✓ Migration: Added payment_screenshot_blob to event_registrations.")
+            
+        if "payment_screenshot_filename" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN payment_screenshot_filename VARCHAR(255)"))
+            print("✓ Migration: Added payment_screenshot_filename to event_registrations.")
+            
+        if "payment_screenshot_mime" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN payment_screenshot_mime VARCHAR(100)"))
+            print("✓ Migration: Added payment_screenshot_mime to event_registrations.")
+            
+        if "payment_screenshot_size" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN payment_screenshot_size INT"))
+            print("✓ Migration: Added payment_screenshot_size to event_registrations.")
+            
+        conn.commit()
+except Exception as e:
+    print(f"Skipping MySQL schema migrations: {e}")
+
 app = FastAPI(title=config.APP_NAME)
 
 app.add_middleware(
