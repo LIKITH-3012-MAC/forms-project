@@ -6,7 +6,7 @@ load_dotenv()
 
 APP_NAME = os.getenv("APP_NAME", "Event Registration System")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5500").rstrip("/")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://forms-project-f3sb.vercel.app/").rstrip("/")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 DB_HOST = os.getenv("DB_HOST", "localhost")
