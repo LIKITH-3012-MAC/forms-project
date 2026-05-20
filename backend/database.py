@@ -30,13 +30,10 @@ try:
     print("✓ Connected to MySQL database successfully.")
 except Exception as e:
     print(f"Database connection failed: {e}")
-    if config.ENVIRONMENT == "development":
-        print("Falling back to SQLite database for development mode.")
-        fallback_url = "sqlite:///./fallback_event_db.db"
-        engine = create_engine(fallback_url, connect_args={"check_same_thread": False})
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    else:
-        raise e
+    print("Falling back to SQLite database.")
+    fallback_url = "sqlite:///./fallback_event_db.db"
+    engine = create_engine(fallback_url, connect_args={"check_same_thread": False})
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
