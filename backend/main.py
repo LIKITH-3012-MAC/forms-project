@@ -205,9 +205,11 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 # --- MAIN USER ROUTES ---
 
-@app.get("/")
-async def root_redirect():
+@app.api_route("/", methods=["GET", "HEAD"])
+async def root_redirect(request: Request):
     """Redirect home page to registration form."""
+    if request.method == "HEAD":
+        return Response(status_code=status.HTTP_200_OK)
     return RedirectResponse(url="/form", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -1010,7 +1012,7 @@ async def admin_export_csv(
     return Response(content=csv_data, headers=headers)
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
     """Service health state endpoint."""
     return {"status": "ok", "service": "event-registration-fastapi"}
