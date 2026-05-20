@@ -211,18 +211,10 @@ async def root_redirect():
     return RedirectResponse(url="/form", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.get("/form", response_class=FileResponse)
+@app.get("/form", response_class=HTMLResponse)
 async def serve_form_page():
-    """Serve the static/form.html file."""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    form_path = os.path.join(base_dir, "static", "form.html")
-    form_path = os.path.normpath(form_path)
-    if not os.path.exists(form_path):
-        raise HTTPException(
-            status_code=404, 
-            detail="form.html not found. Please ensure static/form.html exists."
-        )
-    return FileResponse(form_path)
+    """Serve the dynamic registration form."""
+    return HTMLResponse(content=html_pages.render_backend_form_html())
 
 
 @app.get("/api/form-config")

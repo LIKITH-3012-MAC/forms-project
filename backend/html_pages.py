@@ -2239,3 +2239,13 @@ def render_problem_html(reason: str = "Unexpected issue", details: str = "Someth
 
     return page_shell("Problem - Event Registration", body, extra_css)
 
+
+def render_backend_form_html() -> str:
+    """Reads and returns the contents of static/form.html containing the full registration form."""
+    import os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    form_path = os.path.join(base_dir, "static", "form.html")
+    with open(form_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
