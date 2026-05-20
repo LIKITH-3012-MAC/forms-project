@@ -1347,6 +1347,11 @@
 
     <!-- Frontend Core Scripts -->
     <script>
+        // Make BACKEND_URL easy to change at the top of form.html
+        // For production: "https://forms-project-qcdc.onrender.com"
+        // For local development: "http://localhost:8000"
+        const BACKEND_URL = "https://forms-project-qcdc.onrender.com";
+
         let currentStep = 1;
         const totalSteps = 3;
         let eventConfig = null;
@@ -1374,21 +1379,21 @@
         // 1. Fetch live event config
         async function fetchConfig() {
             try {
-                const response = await fetch('/api/form-config');
+                const response = await fetch(`${BACKEND_URL}/api/form-config`);
                 if (!response.ok) {
-                    window.location.href = '/problem?reason=unexpected_server_response';
+                    window.location.href = `${BACKEND_URL}/problem?reason=unexpected_server_response`;
                     return;
                 }
                 
                 try {
                     eventConfig = await response.json();
                 } catch (jsonErr) {
-                    window.location.href = '/problem?reason=unexpected_server_response';
+                    window.location.href = `${BACKEND_URL}/problem?reason=unexpected_server_response`;
                     return;
                 }
 
                 if (!eventConfig || typeof eventConfig !== 'object' || !eventConfig.event_name) {
-                    window.location.href = '/problem?reason=unexpected_server_response';
+                    window.location.href = `${BACKEND_URL}/problem?reason=unexpected_server_response`;
                     return;
                 }
 
@@ -1418,7 +1423,11 @@
                 
                 if (eventConfig.qr_image_url) {
                     document.querySelectorAll('.qr-code-image-el').forEach(el => {
-                        el.src = eventConfig.qr_image_url;
+                        let src = eventConfig.qr_image_url;
+                        if (src.startsWith('/')) {
+                            src = BACKEND_URL + src;
+                        }
+                        el.src = src;
                     });
                 }
 
@@ -1430,7 +1439,7 @@
 
             } catch (err) {
                 console.error("Config fetch failed", err);
-                window.location.href = '/problem?reason=form_config_failed';
+                window.location.href = `${BACKEND_URL}/problem?reason=form_config_failed`;
             }
         }
 
@@ -1493,7 +1502,7 @@
                 utrMsg.style.display = "block";
 
                 try {
-                    const res = await fetch(`/api/check-utr/${encodeURIComponent(rawVal)}`);
+                    const res = await fetch(`${BACKEND_URL}/api/check-utr/${encodeURIComponent(rawVal)}`);
                     if (!res.ok) {
                         throw new Error("HTTP error " + res.status);
                     }
@@ -1689,7 +1698,7 @@
             };
 
             try {
-                const res = await fetch('/api/register', {
+                const res = await fetch(`${BACKEND_URL}/api/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -1699,7 +1708,7 @@
                 try {
                     data = await res.json();
                 } catch (jsonErr) {
-                    window.location.href = '/problem?reason=unexpected_server_response';
+                    window.location.href = `${BACKEND_URL}/problem?reason=unexpected_server_response`;
                     return;
                 }
 
@@ -1715,11 +1724,11 @@
                     submitBtn.textContent = "Submit Registration";
                     closeReviewModal();
                 } else {
-                    window.location.href = `/problem?reason=unexpected_server_response&details=${encodeURIComponent(data.detail || 'The server returned an unexpected error code.')}`;
+                    window.location.href = `${BACKEND_URL}/problem?reason=unexpected_server_response&details=${encodeURIComponent(data.detail || 'The server returned an unexpected error code.')}`;
                 }
             } catch (err) {
                 console.error("Submission error", err);
-                window.location.href = '/problem?reason=registration_network_error';
+                window.location.href = `${BACKEND_URL}/problem?reason=registration_network_error`;
             }
         }
 
