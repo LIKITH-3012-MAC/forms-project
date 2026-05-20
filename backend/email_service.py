@@ -40,6 +40,19 @@ def log_email_result(
         logger.error(f"Failed to log email result to DB: {e}")
         db.rollback()
 
+def frontend_url(path: str) -> str:
+    base = config.FRONTEND_URL.rstrip("/")
+    clean_path = path.lstrip("/")
+    return f"{base}/{clean_path}"
+
+def assert_safe_frontend_url():
+    if config.ENVIRONMENT == "production":
+        forbidden = ["localhost", "127.0.0.1", "file://"]
+        if any(x in config.FRONTEND_URL for x in forbidden):
+            raise RuntimeError(
+                f"CRITICAL: FRONTEND_URL is localhost/127.0.0.1/file:// in production. FRONTEND_URL={config.FRONTEND_URL}"
+            )
+
 def render_email_body(registration, title: str, description: str, status_text: str, badge_color: str) -> str:
     """Renders the HTML body of the email with premium styles and action buttons."""
     
@@ -57,10 +70,9 @@ def render_email_body(registration, title: str, description: str, status_text: s
     amount = registration.amount
     upi_id = escape_html(registration.upi_id)
     
-    frontend_url = config.FRONTEND_URL
-    view_link = f"{frontend_url}/view-response.html?token={registration.view_token}"
-    edit_link = f"{frontend_url}/edit-response.html?token={registration.edit_token}"
-    status_link = f"{frontend_url}/status.html?token={registration.status_token}"
+    view_link = frontend_url(f"view-response.html?token={registration.view_token}")
+    edit_link = frontend_url(f"edit-response.html?token={registration.edit_token}")
+    status_link = frontend_url(f"status.html?token={registration.status_token}")
     
     # Custom message about editing lock
     edit_notice = ""
@@ -191,8 +203,7 @@ def render_email_body(registration, title: str, description: str, status_text: s
 
 def _send_email_api_call(db: Session, registration, email_type: str, subject: str, html_body: str):
     """Internal helper to invoke the Resend API and log the result."""
-    if config.ENVIRONMENT == "production" and "localhost" in config.FRONTEND_URL:
-        raise RuntimeError("FRONTEND_URL cannot be localhost in production emails")
+    assert_safe_frontend_url()
 
     if not config.RESEND_API_KEY or config.RESEND_API_KEY.startswith("re_xxx"):
         # Simulated mode if no valid API key is set

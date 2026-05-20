@@ -17,7 +17,10 @@ import security
 import email_service
 from database import engine, get_db, SessionLocal
 from utils import generate_registration_id, generate_secure_token, escape_html
-
+def frontend_url(path: str) -> str:
+    base = config.FRONTEND_URL.rstrip("/")
+    clean_path = path.lstrip("/")
+    return f"{base}/{clean_path}"
 # Initialize tables
 models.Base.metadata.create_all(bind=engine)
 
@@ -390,7 +393,7 @@ async def register_attendee(
         "view_token": registration.view_token,
         "edit_token": registration.edit_token,
         "status_token": registration.status_token,
-        "redirect_url": f"{config.FRONTEND_URL}/thank-you.html?rid={reg_id}&token={registration.status_token}"
+        "redirect_url": frontend_url(f"thank-you.html?rid={reg_id}&token={registration.status_token}")
     }
 
 @app.get("/api/response/{view_token}")
