@@ -288,7 +288,23 @@
   </div>
 
   <script>
-    const BACKEND_URL = "https://forms-project-qcdc.onrender.com";
+        const CONFIG = {
+      BACKEND_URL:
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+          ? "http://localhost:8000"
+          : "https://forms-project-qcdc.onrender.com"
+    };
+
+    if (
+      !window.location.hostname.includes("localhost") &&
+      !window.location.hostname.includes("127.0.0.1") &&
+      CONFIG.BACKEND_URL.includes("localhost")
+    ) {
+      window.location.href = "/problem.html?reason=production_backend_url_misconfigured";
+    }
+
+    const BACKEND_URL = CONFIG.BACKEND_URL;
 
     function goProblem(reason) {
       window.location.href = `problem.html?reason=${encodeURIComponent(reason)}`;

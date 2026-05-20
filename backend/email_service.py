@@ -191,6 +191,9 @@ def render_email_body(registration, title: str, description: str, status_text: s
 
 def _send_email_api_call(db: Session, registration, email_type: str, subject: str, html_body: str):
     """Internal helper to invoke the Resend API and log the result."""
+    if config.ENVIRONMENT == "production" and "localhost" in config.FRONTEND_URL:
+        raise RuntimeError("FRONTEND_URL cannot be localhost in production emails")
+
     if not config.RESEND_API_KEY or config.RESEND_API_KEY.startswith("re_xxx"):
         # Simulated mode if no valid API key is set
         print(f"\n--- [EMAIL SIMULATION: {email_type.upper()}] ---")

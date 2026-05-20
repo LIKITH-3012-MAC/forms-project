@@ -390,7 +390,7 @@ async def register_attendee(
         "view_token": registration.view_token,
         "edit_token": registration.edit_token,
         "status_token": registration.status_token,
-        "redirect_url": f"/thank-you.html?rid={reg_id}&token={registration.status_token}"
+        "redirect_url": f"{config.FRONTEND_URL}/thank-you.html?rid={reg_id}&token={registration.status_token}"
     }
 
 @app.get("/api/response/{view_token}")
