@@ -322,8 +322,17 @@
         document.getElementById("amount").innerText = `₹${data.amount}`;
         document.getElementById("utr").innerText = data.upi_reference_id;
 
-        if (data.payment_screenshot_url) {
-          document.getElementById("screenshotLink").href = data.payment_screenshot_url;
+        function formatBytes(bytes) {
+          if (!bytes) return '0 Bytes';
+          const k = 1024;
+          const sizes = ['Bytes', 'KB', 'MB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        if (data.payment_screenshot_filename) {
+          document.getElementById("screenshotLink").href = `${BACKEND_URL}/api/user/payment-screenshot/${token}`;
+          document.getElementById("screenshotLink").innerText = `View ${data.payment_screenshot_filename} (${formatBytes(data.payment_screenshot_size)}) ↗`;
         } else {
           document.getElementById("screenshotLink").style.display = "none";
         }

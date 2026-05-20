@@ -268,6 +268,23 @@
       margin-top: 4px;
     }
 
+    .payment-upload-card {
+      border: 1px dashed rgba(255,255,255,0.25);
+      border-radius: 22px;
+      padding: 18px;
+      background: rgba(255,255,255,0.07);
+      box-shadow:
+        inset 4px 4px 12px rgba(0,0,0,0.22),
+        inset -4px -4px 12px rgba(255,255,255,0.06);
+    }
+
+    .payment-preview-img {
+      max-width: 100%;
+      border-radius: 18px;
+      margin-top: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+    }
+
     /* Checkbox list */
     .checkbox-group {
       display: flex;
@@ -570,14 +587,36 @@
         </div>
 
         <div class="form-group">
-          <label class="required" for="screenshot_url">Payment Screenshot URL</label>
-          <input type="url" id="screenshot_url" required placeholder="https://imgur.com/your-payment-screenshot" />
-          <div class="error-msg" id="screenshot-error">Please enter a valid HTTP/HTTPS image URL.</div>
+          <label class="required" for="payment_screenshot">Upload Payment Screenshot</label>
+          <div class="payment-upload-card" id="uploadCard">
+            <input
+              type="file"
+              id="payment_screenshot"
+              name="payment_screenshot"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              required
+              style="display: none;"
+            />
+            <div id="uploadPlaceholder" style="cursor: pointer; padding: 20px; text-align: center;">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 8px; opacity: 0.7; display: inline-block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <p style="font-size: 14px; font-weight: 500;">Drag & Drop or Click to Upload</p>
+              <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Upload the screenshot of your successful UPI payment. Accepted formats: JPG, PNG, WEBP. Max size: 3MB.</p>
+            </div>
+            <div id="uploadPreview" style="display: none; padding: 10px; text-align: center;">
+              <img id="paymentPreviewImg" class="payment-preview-img" alt="Screenshot preview" />
+              <div style="margin-top: 10px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; align-items: center;">
+                <span id="paymentFileName" style="font-weight: 500; word-break: break-all;"></span>
+                <span id="paymentFileSize" style="color: var(--text-muted);"></span>
+                <button type="button" class="neo-btn neo-btn-secondary" id="removeFileBtn" style="padding: 6px 12px; font-size: 11px; margin-top: 8px; width: auto; flex: none;">Remove File</button>
+              </div>
+            </div>
+          </div>
+          <div class="error-msg" id="screenshot-error">Payment screenshot is required (JPG, PNG, or WEBP, max 3MB).</div>
         </div>
 
         <div class="checkbox-group">
           <input type="checkbox" id="agreement" required />
-          <label for="agreement" class="required">I certify that the UTR/Reference ID provided matches my payment screenshot and represents a successful fee transfer of ₹700.</label>
+          <label for="agreement" class="required" id="agreementLabel">I certify that the UTR/Reference ID provided matches my uploaded payment screenshot and represents a successful fee transfer of ₹700.</label>
         </div>
 
         <div class="btn-row">
@@ -634,6 +673,117 @@
     window.addEventListener("offline", () => showToast("You are currently offline", "danger"));
     window.addEventListener("online", () => showToast("Network connected. You are back online.", "success"));
 
+    // File upload logic
+    let selectedFile = null;
+
+    const fileInput = document.getElementById("payment_screenshot");
+    const uploadCard = document.getElementById("uploadCard");
+    const uploadPlaceholder = document.getElementById("uploadPlaceholder");
+    const uploadPreview = document.getElementById("uploadPreview");
+    const paymentPreviewImg = document.getElementById("paymentPreviewImg");
+    const paymentFileName = document.getElementById("paymentFileName");
+    const paymentFileSize = document.getElementById("paymentFileSize");
+    const removeFileBtn = document.getElementById("removeFileBtn");
+
+    // Click to open file dialog
+    uploadPlaceholder.addEventListener("click", () => fileInput.click());
+
+    // Drag & drop handlers
+    uploadCard.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      uploadCard.style.borderColor = "var(--primary)";
+    });
+
+    uploadCard.addEventListener("dragleave", () => {
+      uploadCard.style.borderColor = "rgba(255,255,255,0.25)";
+    });
+
+    uploadCard.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadCard.style.borderColor = "rgba(255,255,255,0.25)";
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFileSelect(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener("change", (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFileSelect(e.target.files[0]);
+      }
+    });
+
+    removeFileBtn.addEventListener("click", () => {
+      selectedFile = null;
+      fileInput.value = "";
+      uploadPreview.style.display = "none";
+      uploadPlaceholder.style.display = "block";
+    });
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function handleFileSelect(file) {
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+      if (!allowedTypes.includes(file.type)) {
+        showToast("Screenshot file must be JPG, PNG, or WEBP.", "danger");
+        return;
+      }
+
+      const maxSizeBytes = 3 * 1024 * 1024;
+      if (file.size > maxSizeBytes) {
+        showToast("Screenshot size must be below 3MB.", "danger");
+        return;
+      }
+
+      selectedFile = file;
+      paymentFileName.innerText = file.name;
+      paymentFileSize.innerText = formatBytes(file.size);
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        paymentPreviewImg.src = e.target.result;
+        uploadPlaceholder.style.display = "none";
+        uploadPreview.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // LocalStorage draft auto-save
+    const formFields = ["full_name", "email", "phone", "college", "department", "year", "roll_number", "upi_reference_id"];
+    
+    function saveDraft() {
+      const draft = {};
+      formFields.forEach(id => {
+        draft[id] = document.getElementById(id).value;
+      });
+      localStorage.setItem("event_form_draft", JSON.stringify(draft));
+    }
+
+    function restoreDraft() {
+      const draftStr = localStorage.getItem("event_form_draft");
+      if (draftStr) {
+        try {
+          const draft = JSON.parse(draftStr);
+          formFields.forEach(id => {
+            if (draft[id] !== undefined) {
+              document.getElementById(id).value = draft[id];
+            }
+          });
+        } catch (e) {
+          console.error("Failed to restore draft", e);
+        }
+      }
+    }
+
+    formFields.forEach(id => {
+      document.getElementById(id).addEventListener("input", saveDraft);
+    });
+
     // Fetch config
     async function loadConfig() {
       try {
@@ -648,6 +798,9 @@
         document.getElementById("seatsLeft").innerText = `Seats Left: ${eventConfig.seats_available} / ${eventConfig.seats_total}`;
         document.getElementById("paymentAmount").innerText = `₹${eventConfig.event_amount}`;
         document.getElementById("paymentVPA").innerText = eventConfig.upi_id;
+
+        // Dynamic update of agreement label to reflect eventConfig amount
+        document.getElementById("agreementLabel").innerText = `I certify that the UTR/Reference ID provided matches my uploaded payment screenshot and represents a successful fee transfer of ₹${eventConfig.event_amount}.`;
 
         if (!eventConfig.form_enabled) {
           showToast("Registration is currently disabled or deadline has passed.", "danger");
@@ -753,41 +906,9 @@
       }, 500);
     });
 
-    // LocalStorage draft auto-save
-    const formFields = ["full_name", "email", "phone", "college", "department", "year", "roll_number", "upi_reference_id", "screenshot_url"];
-    
-    function saveDraft() {
-      const draft = {};
-      formFields.forEach(id => {
-        draft[id] = document.getElementById(id).value;
-      });
-      localStorage.setItem("event_form_draft", JSON.stringify(draft));
-    }
-
-    function restoreDraft() {
-      const draftStr = localStorage.getItem("event_form_draft");
-      if (draftStr) {
-        try {
-          const draft = JSON.parse(draftStr);
-          formFields.forEach(id => {
-            if (draft[id] !== undefined) {
-              document.getElementById(id).value = draft[id];
-            }
-          });
-        } catch (e) {
-          console.error("Failed to restore draft", e);
-        }
-      }
-    }
-
-    formFields.forEach(id => {
-      document.getElementById(id).addEventListener("input", saveDraft);
-    });
-
     // Review details modal
     function openReviewModal() {
       const utr = document.getElementById("upi_reference_id").value.trim();
-      const screenshot = document.getElementById("screenshot_url").value.trim();
       const agree = document.getElementById("agreement").checked;
 
       let valid = true;
@@ -796,7 +917,7 @@
         valid = false;
       }
 
-      if (!screenshot.match(/^https?:\/\/[^\s/$.?#].[^\s]*$/)) {
+      if (!selectedFile) {
         document.getElementById("screenshot-error").style.display = "block";
         valid = false;
       } else {
@@ -836,6 +957,15 @@
         }
       });
 
+      if (selectedFile) {
+        listContainer.innerHTML += `
+          <div class="review-item">
+            <span class="review-label">Screenshot</span>
+            <span class="review-value">${escapeHtml(selectedFile.name)} (${formatBytes(selectedFile.size)})</span>
+          </div>
+        `;
+      }
+
       document.getElementById("reviewModal").classList.add("active");
     }
 
@@ -852,30 +982,28 @@
         .replace(/'/g, "&#039;");
     }
 
-    // Submit payload to FastAPI
+    // Submit payload to FastAPI using FormData
     async function submitRegistration() {
       const btn = document.getElementById("confirmSubmitBtn");
       btn.disabled = true;
       btn.innerText = "Submitting...";
 
-      const payload = {
-        full_name: document.getElementById("full_name").value.trim(),
-        email: document.getElementById("email").value.trim(),
-        phone: document.getElementById("phone").value.trim(),
-        college: document.getElementById("college").value.trim(),
-        department: document.getElementById("department").value.trim(),
-        year: document.getElementById("year").value,
-        roll_number: document.getElementById("roll_number").value.trim() || null,
-        upi_reference_id: document.getElementById("upi_reference_id").value.trim(),
-        payment_screenshot_url: document.getElementById("screenshot_url").value.trim() || null,
-        confirm: document.getElementById("agreement").checked
-      };
+      const formData = new FormData();
+      formData.append("full_name", document.getElementById("full_name").value.trim());
+      formData.append("email", document.getElementById("email").value.trim());
+      formData.append("phone", document.getElementById("phone").value.trim());
+      formData.append("college", document.getElementById("college").value.trim());
+      formData.append("department", document.getElementById("department").value.trim());
+      formData.append("year", document.getElementById("year").value);
+      formData.append("roll_number", document.getElementById("roll_number").value.trim() || "");
+      formData.append("upi_reference_id", document.getElementById("upi_reference_id").value.trim());
+      formData.append("agreement", document.getElementById("agreement").checked);
+      formData.append("payment_screenshot", selectedFile);
 
       try {
         const response = await fetch(`${BACKEND_URL}/api/register`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: formData
         });
 
         const data = await response.json();

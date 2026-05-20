@@ -515,8 +515,17 @@
         payBadge.className = `badge badge-${reg.payment_status}`;
         payBadge.innerText = reg.payment_status.replace("_", " ");
 
-        if (reg.payment_screenshot_url) {
-          document.getElementById("screenshotLink").href = reg.payment_screenshot_url;
+        function formatBytes(bytes) {
+          if (!bytes) return '0 Bytes';
+          const k = 1024;
+          const sizes = ['Bytes', 'KB', 'MB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        if (reg.payment_screenshot_filename) {
+          document.getElementById("screenshotLink").href = `${BACKEND_URL}/api/payment-screenshot/${reg.registration_id}?token=${encodeURIComponent(adminToken)}`;
+          document.getElementById("screenshotLink").innerText = `View ${reg.payment_screenshot_filename} (${formatBytes(reg.payment_screenshot_size)}) ↗`;
         } else {
           document.getElementById("screenshotLink").style.display = "none";
         }

@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Enum, LargeBinary
 from database import Base
 
 class EventRegistration(Base):
@@ -20,7 +20,10 @@ class EventRegistration(Base):
     amount = Column(Integer, nullable=False)
     upi_id = Column(String(100), nullable=False)
     upi_reference_id = Column(String(120), unique=True, index=True, nullable=False)
-    payment_screenshot_url = Column(Text, nullable=True)
+    payment_screenshot_blob = Column(LargeBinary(length=4294967295), nullable=True)
+    payment_screenshot_filename = Column(String(255), nullable=True)
+    payment_screenshot_mime = Column(String(100), nullable=True)
+    payment_screenshot_size = Column(Integer, nullable=True)
     
     payment_status = Column(String(50), default="PENDING_REVIEW") # PENDING_REVIEW, APPROVED, REJECTED, NEEDS_CORRECTION
     registration_status = Column(String(50), default="SUBMITTED") # SUBMITTED, UPDATED, CONFIRMED, REJECTED, CANCELLED

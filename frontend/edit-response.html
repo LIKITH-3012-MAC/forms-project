@@ -219,6 +219,22 @@
       from { transform: translateX(100%); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
+    .payment-upload-card {
+      border: 1px dashed rgba(255,255,255,0.25);
+      border-radius: 22px;
+      padding: 18px;
+      background: rgba(255,255,255,0.07);
+      box-shadow:
+        inset 4px 4px 12px rgba(0,0,0,0.22),
+        inset -4px -4px 12px rgba(255,255,255,0.06);
+    }
+
+    .payment-preview-img {
+      max-width: 100%;
+      border-radius: 18px;
+      margin-top: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+    }
   </style>
 </head>
 <body>
@@ -286,9 +302,30 @@
       </div>
 
       <div class="form-group">
-        <label class="required" for="screenshot_url">Payment Screenshot URL</label>
-        <input type="url" id="screenshot_url" required placeholder="https://imgur.com/your-payment-screenshot" />
-        <div class="error-msg" id="screenshot-error">Please enter a valid screenshot URL.</div>
+        <label for="payment_screenshot">Upload New Payment Screenshot (Optional)</label>
+        <div class="payment-upload-card" id="uploadCard">
+          <input
+            type="file"
+            id="payment_screenshot"
+            name="payment_screenshot"
+            accept="image/png,image/jpeg,image/jpg,image/webp"
+            style="display: none;"
+          />
+          <div id="uploadPlaceholder" style="cursor: pointer; padding: 20px; text-align: center;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 8px; opacity: 0.7; display: inline-block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p style="font-size: 14px; font-weight: 500;" id="uploadPlaceholderText">Drag & Drop or Click to Replace Screenshot</p>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Leave empty to keep current screenshot. Accepted formats: JPG, PNG, WEBP. Max size: 3MB.</p>
+          </div>
+          <div id="uploadPreview" style="display: none; padding: 10px; text-align: center;">
+            <img id="paymentPreviewImg" class="payment-preview-img" alt="Screenshot preview" />
+            <div style="margin-top: 10px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; align-items: center;">
+              <span id="paymentFileName" style="font-weight: 500; word-break: break-all;"></span>
+              <span id="paymentFileSize" style="color: var(--text-muted);"></span>
+              <button type="button" class="neo-btn neo-btn-secondary" id="removeFileBtn" style="padding: 6px 12px; font-size: 11px; margin-top: 8px; width: auto; flex: none;">Remove File</button>
+            </div>
+          </div>
+        </div>
+        <div class="error-msg" id="screenshot-error">Payment screenshot must be JPG, PNG, or WEBP under 3MB.</div>
       </div>
 
       <div class="btn-row">
@@ -324,6 +361,87 @@
       window.location.href = `problem.html?reason=${encodeURIComponent(reason)}`;
     }
 
+    // File upload logic
+    let selectedFile = null;
+
+    const fileInput = document.getElementById("payment_screenshot");
+    const uploadCard = document.getElementById("uploadCard");
+    const uploadPlaceholder = document.getElementById("uploadPlaceholder");
+    const uploadPlaceholderText = document.getElementById("uploadPlaceholderText");
+    const uploadPreview = document.getElementById("uploadPreview");
+    const paymentPreviewImg = document.getElementById("paymentPreviewImg");
+    const paymentFileName = document.getElementById("paymentFileName");
+    const paymentFileSize = document.getElementById("paymentFileSize");
+    const removeFileBtn = document.getElementById("removeFileBtn");
+
+    // Click to open file dialog
+    uploadPlaceholder.addEventListener("click", () => fileInput.click());
+
+    // Drag & drop handlers
+    uploadCard.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      uploadCard.style.borderColor = "var(--primary)";
+    });
+
+    uploadCard.addEventListener("dragleave", () => {
+      uploadCard.style.borderColor = "rgba(255,255,255,0.25)";
+    });
+
+    uploadCard.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadCard.style.borderColor = "rgba(255,255,255,0.25)";
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFileSelect(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener("change", (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFileSelect(e.target.files[0]);
+      }
+    });
+
+    removeFileBtn.addEventListener("click", () => {
+      selectedFile = null;
+      fileInput.value = "";
+      uploadPreview.style.display = "none";
+      uploadPlaceholder.style.display = "block";
+    });
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function handleFileSelect(file) {
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+      if (!allowedTypes.includes(file.type)) {
+        showToast("Screenshot file must be JPG, PNG, or WEBP.", "danger");
+        return;
+      }
+
+      const maxSizeBytes = 3 * 1024 * 1024;
+      if (file.size > maxSizeBytes) {
+        showToast("Screenshot size must be below 3MB.", "danger");
+        return;
+      }
+
+      selectedFile = file;
+      paymentFileName.innerText = file.name;
+      paymentFileSize.innerText = formatBytes(file.size);
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        paymentPreviewImg.src = e.target.result;
+        uploadPlaceholder.style.display = "none";
+        uploadPreview.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    }
+
     async function loadRegistration() {
       const urlParams = new URLSearchParams(window.location.search);
       editToken = urlParams.get("token");
@@ -352,7 +470,11 @@
         document.getElementById("year").value = data.year;
         document.getElementById("roll_number").value = data.roll_number || "";
         document.getElementById("upi_reference_id").value = data.upi_reference_id;
-        document.getElementById("screenshot_url").value = data.payment_screenshot_url || "";
+
+        // Render info about currently uploaded screenshot
+        if (data.payment_screenshot_filename) {
+          uploadPlaceholderText.innerHTML = `Drag & Drop or Click to <strong>Replace</strong> Screenshot<br><span style="font-size: 11px; opacity: 0.8; margin-top: 4px; display: inline-block;">Current: ${escapeHtml(data.payment_screenshot_filename)} (${formatBytes(data.payment_screenshot_size)})</span>`;
+        }
 
         if (data.is_edit_locked) {
           showToast("This response editing is locked by admin", "warning");
@@ -375,7 +497,6 @@
       const dept = document.getElementById("department").value.trim();
       const year = document.getElementById("year").value;
       const utr = document.getElementById("upi_reference_id").value.trim();
-      const screenshot = document.getElementById("screenshot_url").value.trim();
 
       let valid = true;
 
@@ -401,13 +522,6 @@
         document.getElementById("utr-error").style.display = "none";
       }
 
-      if (!screenshot.match(/^https?:\/\/[^\s/$.?#].[^\s]*$/)) {
-        document.getElementById("screenshot-error").style.display = "block";
-        valid = false;
-      } else {
-        document.getElementById("screenshot-error").style.display = "none";
-      }
-
       if (!college || !dept || !year) {
         showToast("Please fill all required fields.", "danger");
         valid = false;
@@ -419,22 +533,24 @@
         return;
       }
 
-      const payload = {
-        full_name: name,
-        phone: phone,
-        college: college,
-        department: dept,
-        year: year,
-        roll_number: document.getElementById("roll_number").value.trim() || null,
-        upi_reference_id: utr,
-        payment_screenshot_url: screenshot || null
-      };
+      // Prepare Multipart Form Data
+      const formData = new FormData();
+      formData.append("full_name", name);
+      formData.append("phone", phone);
+      formData.append("college", college);
+      formData.append("department", dept);
+      formData.append("year", year);
+      formData.append("roll_number", document.getElementById("roll_number").value.trim() || "");
+      formData.append("upi_reference_id", utr);
+      
+      if (selectedFile) {
+        formData.append("payment_screenshot", selectedFile);
+      }
 
       try {
         const response = await fetch(`${BACKEND_URL}/api/edit/${editToken}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: formData
         });
 
         const data = await response.json();
@@ -453,6 +569,15 @@
         btn.disabled = false;
         btn.innerText = "Save Changes";
       }
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
 
     window.addEventListener("DOMContentLoaded", loadRegistration);

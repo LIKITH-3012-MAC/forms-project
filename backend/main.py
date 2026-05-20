@@ -4,7 +4,7 @@ import io
 import json
 import datetime
 from typing import Optional
-from fastapi import FastAPI, Depends, Request, HTTPException, status, Response
+from fastapi import FastAPI, Depends, Request, HTTPException, status, Response, Form, File, UploadFile
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -62,6 +62,9 @@ def verify_admin_token(request: Request) -> str:
     if not token:
         token = request.cookies.get("admin_session")
         
+    if not token:
+        token = request.query_params.get("token")
+
     if not token:
         raise HTTPException(status_code=401, detail="Unauthorized: No admin token provided.")
         
@@ -191,38 +194,99 @@ async def check_utr(utr: str, db: Session = Depends(get_db)):
 
 @app.post("/api/register")
 async def register_attendee(
-    payload: schemas.RegistrationCreate,
-    request: Request,
+    full_name: str = Form(...),
+    email: str = Form(...),
+    phone: str = Form(...),
+    college: str = Form(None),
+    department: str = Form(None),
+    year: str = Form(...),
+    roll_number: str = Form(None),
+    upi_reference_id: str = Form(...),
+    agreement: bool = Form(...),
+    payment_screenshot: UploadFile = File(...),
+    request: Request = None,
     db: Session = Depends(get_db)
 ):
-    """Processes new registration submission."""
-    # 1. Validate Form Constraints
+    """Processes new registration submission with payment screenshot upload."""
     approved_count = db.query(models.EventRegistration).filter(
         models.EventRegistration.payment_status == "APPROVED"
     ).count()
     seats_available = config.EVENT_SEATS_TOTAL - approved_count
     if seats_available <= 0:
-        raise HTTPException(status_code=400, detail="Registration seats are fully booked.")
+        return JSONResponse(status_code=400, content={"success": False, "message": "Registration seats are fully booked."})
 
     if is_deadline_passed():
-        raise HTTPException(status_code=400, detail="Registration deadline has expired.")
+        return JSONResponse(status_code=400, content={"success": False, "message": "Registration deadline has expired."})
 
-    # 2. Duplicate UTR check
+    # Field validations
+    import re
+    full_name = full_name.strip()
+    if len(full_name) < 2 or len(full_name) > 150:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Full Name must be between 2 and 150 characters."})
+
+    email = email.strip().lower()
+    if not re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
+        return JSONResponse(status_code=400, content={"success": False, "message": "Please enter a valid email address."})
+
+    phone = re.sub(r"\s+", "", phone)
+    if not re.match(r"^(\+91)?[6789]\d{9}$", phone):
+        return JSONResponse(status_code=400, content={"success": False, "message": "Phone number must be a valid 10-digit number, optionally prefixed with +91."})
+
+    upi_reference_id = upi_reference_id.strip().upper()
+    if len(upi_reference_id) < 8:
+        return JSONResponse(status_code=400, content={"success": False, "message": "UPI/UTR reference ID must be at least 8 characters long."})
+
+    if not agreement:
+        return JSONResponse(status_code=400, content={"success": False, "message": "You must confirm that the details are correct."})
+
+    college = (college or "").strip()
+    department = (department or "").strip()
+    if not college:
+        return JSONResponse(status_code=400, content={"success": False, "message": "College name is required."})
+    if not department:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Department is required."})
+
+    # Duplicate UTR check
     duplicate_utr = db.query(models.EventRegistration).filter(
-        models.EventRegistration.upi_reference_id == payload.upi_reference_id
+        models.EventRegistration.upi_reference_id == upi_reference_id
     ).first()
     if duplicate_utr:
-        raise HTTPException(status_code=400, detail="This transaction reference ID has already been submitted.")
+        return JSONResponse(status_code=400, content={"success": False, "message": "This transaction reference ID has already been submitted."})
 
-    # 3. Duplicate Email check if restricted
+    # Duplicate Email check if restricted
     if not config.ALLOW_DUPLICATE_EMAIL:
         duplicate_email = db.query(models.EventRegistration).filter(
-            models.EventRegistration.email == payload.email
+            models.EventRegistration.email == email
         ).first()
         if duplicate_email:
-            raise HTTPException(status_code=400, detail="This email address is already registered.")
+            return JSONResponse(status_code=400, content={"success": False, "message": "This email address is already registered."})
 
-    # 4. Generate metadata
+    # Validate payment screenshot file
+    if not payment_screenshot or not payment_screenshot.filename:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Payment screenshot is required."})
+
+    contents = await payment_screenshot.read()
+    file_size = len(contents)
+    if file_size == 0:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Payment screenshot is required."})
+
+    filename = payment_screenshot.filename
+    content_type = payment_screenshot.content_type
+
+    ext = os.path.splitext(filename)[1].lower()
+    allowed_exts = {".jpg", ".jpeg", ".png", ".webp"}
+    if ext not in allowed_exts:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Screenshot file must be JPG, PNG, or WEBP."})
+
+    allowed_types = {"image/jpeg", "image/png", "image/webp"}
+    if content_type not in allowed_types:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Screenshot file must be JPG, PNG, or WEBP."})
+
+    max_size = 3 * 1024 * 1024
+    if file_size > max_size:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Screenshot size must be below 3MB."})
+
+    # Generate metadata
     reg_id = generate_registration_id()
     while db.query(models.EventRegistration).filter(models.EventRegistration.registration_id == reg_id).first():
         reg_id = generate_registration_id()
@@ -236,18 +300,21 @@ async def register_attendee(
     registration = models.EventRegistration(
         registration_id=reg_id,
         response_number=response_num,
-        full_name=payload.full_name,
-        email=payload.email,
-        phone=payload.phone,
-        college=payload.college,
-        department=payload.department,
-        year=payload.year,
-        roll_number=payload.roll_number,
+        full_name=full_name,
+        email=email,
+        phone=phone,
+        college=college,
+        department=department,
+        year=year,
+        roll_number=roll_number,
         event_name=config.EVENT_NAME,
         amount=config.EVENT_AMOUNT,
         upi_id=config.UPI_ID,
-        upi_reference_id=payload.upi_reference_id,
-        payment_screenshot_url=payload.payment_screenshot_url,
+        upi_reference_id=upi_reference_id,
+        payment_screenshot_blob=contents,
+        payment_screenshot_filename=filename,
+        payment_screenshot_mime=content_type,
+        payment_screenshot_size=file_size,
         payment_status="PENDING_REVIEW",
         registration_status="SUBMITTED",
         edit_token=generate_secure_token(),
@@ -262,8 +329,18 @@ async def register_attendee(
     db.refresh(registration)
 
     # Audit log
-    audit_data = payload.model_dump()
-    audit_data.pop("confirm", None)
+    audit_data = {
+        "full_name": full_name,
+        "email": email,
+        "phone": phone,
+        "college": college,
+        "department": department,
+        "year": year,
+        "roll_number": roll_number,
+        "upi_reference_id": upi_reference_id,
+        "filename": filename,
+        "size": file_size
+    }
     audit_log = models.RegistrationAuditLog(
         registration_id=reg_id,
         action="SUBMITTED",
@@ -312,7 +389,9 @@ async def get_response_by_token(view_token: str, db: Session = Depends(get_db)):
             "event_name": reg.event_name,
             "amount": reg.amount,
             "upi_reference_id": reg.upi_reference_id,
-            "payment_screenshot_url": reg.payment_screenshot_url,
+            "payment_screenshot_filename": reg.payment_screenshot_filename,
+            "payment_screenshot_size": reg.payment_screenshot_size,
+            "payment_screenshot_mime": reg.payment_screenshot_mime,
             "payment_status": reg.payment_status,
             "registration_status": reg.registration_status,
             "created_at": reg.created_at.strftime("%Y-%m-%d %H:%M:%S")
@@ -376,7 +455,9 @@ async def get_editable_fields(edit_token: str, db: Session = Depends(get_db)):
             "event_name": reg.event_name,
             "amount": reg.amount,
             "upi_reference_id": reg.upi_reference_id,
-            "payment_screenshot_url": reg.payment_screenshot_url,
+            "payment_screenshot_filename": reg.payment_screenshot_filename,
+            "payment_screenshot_size": reg.payment_screenshot_size,
+            "payment_screenshot_mime": reg.payment_screenshot_mime,
             "is_edit_locked": reg.is_edit_locked
         }
     }
@@ -384,8 +465,15 @@ async def get_editable_fields(edit_token: str, db: Session = Depends(get_db)):
 @app.put("/api/edit/{edit_token}")
 async def update_registration(
     edit_token: str,
-    payload: schemas.RegistrationUpdate,
-    request: Request,
+    full_name: str = Form(...),
+    phone: str = Form(...),
+    college: str = Form(...),
+    department: str = Form(...),
+    year: str = Form(...),
+    roll_number: str = Form(None),
+    upi_reference_id: str = Form(...),
+    payment_screenshot: Optional[UploadFile] = File(None),
+    request: Request = None,
     db: Session = Depends(get_db)
 ):
     """Processes edited responses."""
@@ -394,19 +482,68 @@ async def update_registration(
     ).first()
 
     if not reg:
-        raise HTTPException(status_code=404, detail="Edit link invalid.")
+        return JSONResponse(status_code=404, content={"success": False, "message": "Edit link invalid."})
 
     if reg.is_edit_locked and config.LOCK_EDIT_AFTER_APPROVAL:
-        raise HTTPException(status_code=400, detail="Editing is locked for this response.")
+        return JSONResponse(status_code=400, content={"success": False, "message": "Editing is locked for this response."})
+
+    # Field validations
+    import re
+    full_name = full_name.strip()
+    if len(full_name) < 2 or len(full_name) > 150:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Full Name must be between 2 and 150 characters."})
+
+    phone = re.sub(r"\s+", "", phone)
+    if not re.match(r"^(\+91)?[6789]\d{9}$", phone):
+        return JSONResponse(status_code=400, content={"success": False, "message": "Phone number must be a valid 10-digit number, optionally prefixed with +91."})
+
+    upi_reference_id = upi_reference_id.strip().upper()
+    if len(upi_reference_id) < 8:
+        return JSONResponse(status_code=400, content={"success": False, "message": "UPI/UTR reference ID must be at least 8 characters long."})
+
+    college = (college or "").strip()
+    department = (department or "").strip()
+    if not college:
+        return JSONResponse(status_code=400, content={"success": False, "message": "College name is required."})
+    if not department:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Department is required."})
 
     # Check duplicate UTR
-    if payload.upi_reference_id != reg.upi_reference_id:
+    if upi_reference_id != reg.upi_reference_id:
         duplicate_utr = db.query(models.EventRegistration).filter(
-            models.EventRegistration.upi_reference_id == payload.upi_reference_id,
+            models.EventRegistration.upi_reference_id == upi_reference_id,
             models.EventRegistration.id != reg.id
         ).first()
         if duplicate_utr:
-            raise HTTPException(status_code=400, detail="This transaction reference ID has already been submitted.")
+            return JSONResponse(status_code=400, content={"success": False, "message": "This transaction reference ID has already been submitted."})
+
+    # Optional Payment Screenshot replacement validation
+    new_screenshot_provided = False
+    new_contents = None
+    new_filename = None
+    new_mime = None
+    new_size = None
+
+    if payment_screenshot and payment_screenshot.filename:
+        new_contents = await payment_screenshot.read()
+        new_size = len(new_contents)
+        if new_size > 0:
+            new_screenshot_provided = True
+            new_filename = payment_screenshot.filename
+            new_mime = payment_screenshot.content_type
+
+            ext = os.path.splitext(new_filename)[1].lower()
+            allowed_exts = {".jpg", ".jpeg", ".png", ".webp"}
+            if ext not in allowed_exts:
+                return JSONResponse(status_code=400, content={"success": False, "message": "Screenshot file must be JPG, PNG, or WEBP."})
+
+            allowed_types = {"image/jpeg", "image/png", "image/webp"}
+            if new_mime not in allowed_types:
+                return JSONResponse(status_code=400, content={"success": False, "message": "Screenshot file must be JPG, PNG, or WEBP."})
+
+            max_size = 3 * 1024 * 1024
+            if new_size > max_size:
+                return JSONResponse(status_code=400, content={"success": False, "message": "Screenshot size must be below 3MB."})
 
     # Record old data for audit trail
     old_data = {
@@ -417,26 +554,33 @@ async def update_registration(
         "year": reg.year,
         "roll_number": reg.roll_number,
         "upi_reference_id": reg.upi_reference_id,
-        "payment_screenshot_url": reg.payment_screenshot_url,
+        "payment_screenshot_filename": reg.payment_screenshot_filename,
+        "payment_screenshot_size": reg.payment_screenshot_size,
         "payment_status": reg.payment_status,
         "registration_status": reg.registration_status
     }
 
-    # Reset payment status if UTR has changed
-    utr_changed = payload.upi_reference_id != reg.upi_reference_id
-    if utr_changed:
+    # Reset payment status if UTR has changed or screenshot is updated
+    utr_changed = upi_reference_id != reg.upi_reference_id
+    if utr_changed or new_screenshot_provided:
         reg.payment_status = "PENDING_REVIEW"
     reg.registration_status = "UPDATED"
 
     # Update database record
-    reg.full_name = payload.full_name
-    reg.phone = payload.phone
-    reg.college = payload.college
-    reg.department = payload.department
-    reg.year = payload.year
-    reg.roll_number = payload.roll_number
-    reg.upi_reference_id = payload.upi_reference_id
-    reg.payment_screenshot_url = payload.payment_screenshot_url
+    reg.full_name = full_name
+    reg.phone = phone
+    reg.college = college
+    reg.department = department
+    reg.year = year
+    reg.roll_number = roll_number
+    reg.upi_reference_id = upi_reference_id
+    
+    if new_screenshot_provided:
+        reg.payment_screenshot_blob = new_contents
+        reg.payment_screenshot_filename = new_filename
+        reg.payment_screenshot_mime = new_mime
+        reg.payment_screenshot_size = new_size
+        
     reg.edit_count += 1
     reg.last_edited_at = datetime.datetime.utcnow()
 
@@ -444,11 +588,21 @@ async def update_registration(
 
     # Audit log
     client_ip = get_client_ip(request)
+    new_data = {
+        "full_name": full_name,
+        "phone": phone,
+        "college": college,
+        "department": department,
+        "year": year,
+        "roll_number": roll_number,
+        "upi_reference_id": upi_reference_id,
+        "new_screenshot_uploaded": new_screenshot_provided
+    }
     audit_log = models.RegistrationAuditLog(
         registration_id=reg.registration_id,
         action="EDITED",
         old_data=json.dumps(old_data),
-        new_data=json.dumps(payload.model_dump()),
+        new_data=json.dumps(new_data),
         performed_by="user",
         ip_address=client_ip
     )
@@ -551,6 +705,49 @@ async def admin_registrations(
         "registrations": registrations_data
     }
 
+@app.get("/api/payment-screenshot/{registration_id}")
+async def get_payment_screenshot(
+    registration_id: str,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    """Retrieves uploaded payment screenshot image from DB for admins."""
+    registration = db.query(models.EventRegistration).filter(
+        models.EventRegistration.registration_id == registration_id
+    ).first()
+
+    if not registration or not registration.payment_screenshot_blob:
+        raise HTTPException(status_code=404, detail="Screenshot not found")
+
+    return Response(
+        content=registration.payment_screenshot_blob,
+        media_type=registration.payment_screenshot_mime,
+        headers={
+            "Content-Disposition": f"inline; filename={registration.payment_screenshot_filename}"
+        }
+    )
+
+@app.get("/api/user/payment-screenshot/{view_token}")
+async def get_user_payment_screenshot(
+    view_token: str,
+    db: Session = Depends(get_db)
+):
+    """Retrieves uploaded payment screenshot image from DB for users using view token."""
+    registration = db.query(models.EventRegistration).filter(
+        models.EventRegistration.view_token == view_token
+    ).first()
+
+    if not registration or not registration.payment_screenshot_blob:
+        raise HTTPException(status_code=404, detail="Screenshot not found")
+
+    return Response(
+        content=registration.payment_screenshot_blob,
+        media_type=registration.payment_screenshot_mime,
+        headers={
+            "Content-Disposition": f"inline; filename={registration.payment_screenshot_filename}"
+        }
+    )
+
 @app.get("/api/admin/registration/{registration_id}")
 async def admin_registration_detail(
     registration_id: str,
@@ -607,7 +804,9 @@ async def admin_registration_detail(
             "amount": reg.amount,
             "upi_id": reg.upi_id,
             "upi_reference_id": reg.upi_reference_id,
-            "payment_screenshot_url": reg.payment_screenshot_url,
+            "payment_screenshot_filename": reg.payment_screenshot_filename,
+            "payment_screenshot_size": reg.payment_screenshot_size,
+            "payment_screenshot_mime": reg.payment_screenshot_mime,
             "payment_status": reg.payment_status,
             "registration_status": reg.registration_status,
             "is_edit_locked": reg.is_edit_locked,
