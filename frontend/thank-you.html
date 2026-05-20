@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thank You - SAKRA VISION</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f1115;
+      --card-bg: rgba(22, 26, 33, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
+    }
+
+    .thankyou-shell {
+      width: 100%;
+      max-width: 500px;
+      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 40px 32px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px auto;
+      color: var(--success);
+      font-size: 28px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .info-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 32px;
+      text-align: left;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    .info-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .info-label {
+      color: var(--text-muted);
+    }
+
+    .info-val {
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .status-badge {
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(245, 158, 11, 0.1);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .btn-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .neo-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      border: 1px solid transparent;
+      box-sizing: border-box;
+    }
+
+    .neo-btn-primary {
+      background: #1e222b;
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.03);
+      box-shadow: 
+        -4px -4px 10px rgba(255, 255, 255, 0.02),
+        4px 4px 10px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .neo-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 
+        -6px -6px 12px rgba(255, 255, 255, 0.04),
+        6px 6px 15px rgba(0, 0, 0, 0.5),
+        0 0 12px rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #818cf8;
+    }
+
+    .neo-btn-secondary {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      border-color: rgba(255, 255, 255, 0.05);
+      box-shadow: 
+        -2px -2px 6px rgba(255, 255, 255, 0.01),
+        2px 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .neo-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .neo-btn:active {
+      transform: translateY(1px);
+      box-shadow: 
+        inset -2px -2px 6px rgba(255, 255, 255, 0.05),
+        inset 2px 2px 6px rgba(0, 0, 0, 0.6);
+    }
+  </style>
+</head>
+<body>
+  <main class="thankyou-shell">
+    <div class="card">
+      <div class="success-icon">✓</div>
+      <h1>Response Submitted</h1>
+      <p class="subtitle">
+        Your registration details were recorded successfully. The organizers are manually reviewing your payment details.
+      </p>
+
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Registration ID</span>
+          <span class="info-val" id="regId">Loading...</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Payment Status</span>
+          <span class="status-badge" id="paymentStatus">Pending Review</span>
+        </div>
+      </div>
+
+      <div class="btn-stack">
+        <a id="checkStatusBtn" class="neo-btn neo-btn-primary" href="#">
+          Check Status Timeline
+        </a>
+        <a id="viewResponseBtn" class="neo-btn neo-btn-secondary" href="#">
+          View Response Copy
+        </a>
+        <a id="editResponseBtn" class="neo-btn neo-btn-secondary" href="#">
+          Edit Response
+        </a>
+        <a class="neo-btn neo-btn-secondary" href="form.html">
+          Register New Person
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const BACKEND_URL = "https://forms-project-qcdc.onrender.com";
+
+    function goProblem(reason) {
+      window.location.href = `problem.html?reason=${encodeURIComponent(reason)}`;
+    }
+
+    async function loadStatus() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const statusToken = urlParams.get("token");
+      const rid = urlParams.get("rid");
+
+      if (!statusToken) {
+        goProblem("MISSING_TOKEN");
+        return;
+      }
+
+      document.getElementById("regId").innerText = rid || "Pending Allocation";
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/status/${statusToken}`);
+        if (!response.ok) {
+          throw new Error("Failed to load registration status");
+        }
+        
+        const resData = await response.json();
+        const data = resData.data;
+
+        document.getElementById("regId").innerText = data.registration_id;
+        document.getElementById("paymentStatus").innerText = data.payment_status.replace("_", " ");
+
+        // Configure actions links
+        document.getElementById("checkStatusBtn").href = `status.html?token=${statusToken}`;
+        document.getElementById("viewResponseBtn").href = `view-response.html?token=${data.view_token}`;
+        document.getElementById("editResponseBtn").href = `edit-response.html?token=${data.edit_token}`;
+      } catch (err) {
+        console.error(err);
+        showToast("Error retrieving registration details", "danger");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", loadStatus);
+  </script>
+</body>
+</html>

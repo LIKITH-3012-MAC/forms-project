@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit Response - SAKRA VISION</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f1115;
+      --card-bg: rgba(22, 26, 33, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.04) 0%, transparent 40%);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 580px;
+      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      text-align: center;
+      background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .required::after {
+      content: ' *';
+      color: var(--danger);
+    }
+
+    input, select {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: #ffffff;
+      transition: all 0.3s ease;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    input[readonly] {
+      background: rgba(255, 255, 255, 0.01);
+      color: var(--text-muted);
+      cursor: not-allowed;
+      border-color: rgba(255, 255, 255, 0.04);
+    }
+
+    .error-msg {
+      color: var(--danger);
+      font-size: 12px;
+      margin-top: 6px;
+      display: none;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 28px;
+    }
+
+    .neo-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid transparent;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    .neo-btn-primary {
+      background: #1e222b;
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.03);
+      box-shadow: 
+        -4px -4px 10px rgba(255, 255, 255, 0.02),
+        4px 4px 10px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .neo-btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 
+        -6px -6px 12px rgba(255, 255, 255, 0.04),
+        6px 6px 15px rgba(0, 0, 0, 0.5),
+        0 0 12px rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #818cf8;
+    }
+
+    .neo-btn-secondary {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      border-color: rgba(255, 255, 255, 0.05);
+      box-shadow: 
+        -2px -2px 6px rgba(255, 255, 255, 0.01),
+        2px 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .neo-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .neo-btn:active:not(:disabled) {
+      transform: translateY(1px);
+      box-shadow: 
+        inset -2px -2px 6px rgba(255, 255, 255, 0.05),
+        inset 2px 2px 6px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Toast styling */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: rgba(22, 26, 33, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 14px 20px;
+      border-radius: 12px;
+      color: #ffffff;
+      font-size: 13px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      animation: slideInRight 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .toast.toast-danger { border-left-color: var(--danger); }
+    .toast.toast-success { border-left-color: var(--success); }
+
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Modify Registration Details</h1>
+
+    <form id="editForm" class="card" onsubmit="return false;">
+      <div class="form-group">
+        <label for="event_name">Registered Event</label>
+        <input type="text" id="event_name" readonly />
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" readonly />
+      </div>
+
+      <div class="form-group">
+        <label class="required" for="full_name">Full Name</label>
+        <input type="text" id="full_name" required placeholder="John Doe" minlength="2" maxlength="150" />
+        <div class="error-msg" id="name-error">Please enter your full name (minimum 2 characters).</div>
+      </div>
+
+      <div class="form-group">
+        <label class="required" for="phone">Phone Number</label>
+        <input type="tel" id="phone" required placeholder="9876543210" />
+        <div class="error-msg" id="phone-error">Please enter a valid 10-digit mobile number.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="required" for="college">College / Institution</label>
+        <input type="text" id="college" required />
+        <div class="error-msg">College name is required.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="required" for="department">Department</label>
+        <input type="text" id="department" required />
+        <div class="error-msg">Department name is required.</div>
+      </div>
+
+      <div class="form-group">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="required" for="year">Year of Study</label>
+            <select id="year" required>
+              <option value="">Select Year</option>
+              <option value="1st Year">1st Year</option>
+              <option value="2nd Year">2nd Year</option>
+              <option value="3rd Year">3rd Year</option>
+              <option value="4th Year">4th Year</option>
+            </select>
+          </div>
+          <div>
+            <label for="roll_number">Roll Number</label>
+            <input type="text" id="roll_number" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="required" for="upi_reference_id">UPI Reference ID / UTR</label>
+        <input type="text" id="upi_reference_id" required placeholder="12-digit number" minlength="8" maxlength="120" />
+        <div class="error-msg" id="utr-error">Please enter a valid UTR Reference ID.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="required" for="screenshot_url">Payment Screenshot URL</label>
+        <input type="url" id="screenshot_url" required placeholder="https://imgur.com/your-payment-screenshot" />
+        <div class="error-msg" id="screenshot-error">Please enter a valid screenshot URL.</div>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="neo-btn neo-btn-secondary" onclick="window.history.back()">
+          Cancel
+        </button>
+        <button type="button" class="neo-btn neo-btn-primary" id="saveBtn" onclick="saveChanges()">
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    const BACKEND_URL = "https://forms-project-qcdc.onrender.com";
+    let editToken = null;
+
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      toast.className = `toast toast-${type}`;
+      toast.innerText = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    function goProblem(reason) {
+      window.location.href = `problem.html?reason=${encodeURIComponent(reason)}`;
+    }
+
+    async function loadRegistration() {
+      const urlParams = new URLSearchParams(window.location.search);
+      editToken = urlParams.get("token");
+
+      if (!editToken) {
+        goProblem("MISSING_TOKEN");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/edit/${editToken}`);
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.message || "Failed to load editable details");
+        }
+
+        const resData = await response.json();
+        const data = resData.data;
+
+        document.getElementById("event_name").value = data.event_name;
+        document.getElementById("email").value = data.email;
+        document.getElementById("full_name").value = data.full_name;
+        document.getElementById("phone").value = data.phone;
+        document.getElementById("college").value = data.college;
+        document.getElementById("department").value = data.department;
+        document.getElementById("year").value = data.year;
+        document.getElementById("roll_number").value = data.roll_number || "";
+        document.getElementById("upi_reference_id").value = data.upi_reference_id;
+        document.getElementById("screenshot_url").value = data.payment_screenshot_url || "";
+
+        if (data.is_edit_locked) {
+          showToast("This response editing is locked by admin", "warning");
+          document.getElementById("saveBtn").disabled = true;
+        }
+      } catch (err) {
+        console.error(err);
+        goProblem("EDIT_LINK_EXPIRED_OR_INVALID");
+      }
+    }
+
+    async function saveChanges() {
+      const btn = document.getElementById("saveBtn");
+      btn.disabled = true;
+      btn.innerText = "Saving...";
+
+      const name = document.getElementById("full_name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const college = document.getElementById("college").value.trim();
+      const dept = document.getElementById("department").value.trim();
+      const year = document.getElementById("year").value;
+      const utr = document.getElementById("upi_reference_id").value.trim();
+      const screenshot = document.getElementById("screenshot_url").value.trim();
+
+      let valid = true;
+
+      if (name.length < 2) {
+        document.getElementById("name-error").style.display = "block";
+        valid = false;
+      } else {
+        document.getElementById("name-error").style.display = "none";
+      }
+
+      const phoneReg = /^(\+91)?[6789]\d{9}$/;
+      if (!phoneReg.test(phone.replace(/\s+/g, ""))) {
+        document.getElementById("phone-error").style.display = "block";
+        valid = false;
+      } else {
+        document.getElementById("phone-error").style.display = "none";
+      }
+
+      if (utr.length < 8) {
+        document.getElementById("utr-error").style.display = "block";
+        valid = false;
+      } else {
+        document.getElementById("utr-error").style.display = "none";
+      }
+
+      if (!screenshot.match(/^https?:\/\/[^\s/$.?#].[^\s]*$/)) {
+        document.getElementById("screenshot-error").style.display = "block";
+        valid = false;
+      } else {
+        document.getElementById("screenshot-error").style.display = "none";
+      }
+
+      if (!college || !dept || !year) {
+        showToast("Please fill all required fields.", "danger");
+        valid = false;
+      }
+
+      if (!valid) {
+        btn.disabled = false;
+        btn.innerText = "Save Changes";
+        return;
+      }
+
+      const payload = {
+        full_name: name,
+        phone: phone,
+        college: college,
+        department: dept,
+        year: year,
+        roll_number: document.getElementById("roll_number").value.trim() || null,
+        upi_reference_id: utr,
+        payment_screenshot_url: screenshot || null
+      };
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/edit/${editToken}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to update changes");
+        }
+
+        showToast("Details updated successfully!", "success");
+        setTimeout(() => {
+          window.location.href = `status.html?token=${data.status_token}`;
+        }, 1500);
+      } catch (err) {
+        console.error(err);
+        showToast(err.message, "danger");
+        btn.disabled = false;
+        btn.innerText = "Save Changes";
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", loadRegistration);
+  </script>
+</body>
+</html>

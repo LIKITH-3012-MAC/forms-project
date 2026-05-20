@@ -84,3 +84,12 @@ class RegistrationUpdate(BaseModel):
         if not re.match(r"^https?://[^\s/$.?#].[^\s]*$", v):
             raise ValueError("Payment screenshot URL must be a valid HTTP or HTTPS URL")
         return v
+
+
+class AdminAction(BaseModel):
+    admin_note: Optional[str] = None
+
+
+class AdminLogin(BaseModel):
+    admin_password: str
+

@@ -57,10 +57,10 @@ def render_email_body(registration, title: str, description: str, status_text: s
     amount = registration.amount
     upi_id = escape_html(registration.upi_id)
     
-    base_url = config.BASE_URL
-    view_link = f"{base_url}/r/{registration.view_token}"
-    edit_link = f"{base_url}/edit/{registration.edit_token}"
-    status_link = f"{base_url}/status/{registration.status_token}"
+    frontend_url = config.FRONTEND_URL
+    view_link = f"{frontend_url}/view-response.html?token={registration.view_token}"
+    edit_link = f"{frontend_url}/edit-response.html?token={registration.edit_token}"
+    status_link = f"{frontend_url}/status.html?token={registration.status_token}"
     
     # Custom message about editing lock
     edit_notice = ""

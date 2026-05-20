@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registration Status Timeline - SAKRA VISION</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f1115;
+      --card-bg: rgba(22, 26, 33, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.04) 0%, transparent 40%);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      text-align: center;
+      background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      margin-bottom: 24px;
+    }
+
+    .meta-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 28px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+    }
+
+    .meta-label {
+      color: var(--text-muted);
+    }
+
+    .meta-value {
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    /* Timeline styles */
+    .timeline {
+      position: relative;
+      margin-bottom: 32px;
+      padding-left: 28px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      width: 2px;
+      height: calc(100% - 16px);
+      background: rgba(255, 255, 255, 0.05);
+      z-index: 1;
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 28px;
+    }
+
+    .timeline-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .timeline-badge {
+      position: absolute;
+      top: 4px;
+      left: -28px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--bg-dark);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      z-index: 2;
+      transition: all 0.3s ease;
+    }
+
+    .timeline-item.active .timeline-badge {
+      border-color: var(--primary);
+      background: var(--primary);
+      box-shadow: 0 0 10px var(--primary);
+    }
+
+    .timeline-item.success .timeline-badge {
+      border-color: var(--success);
+      background: var(--success);
+      box-shadow: 0 0 10px var(--success);
+    }
+
+    .timeline-item.warning .timeline-badge {
+      border-color: var(--warning);
+      background: var(--warning);
+      box-shadow: 0 0 10px var(--warning);
+    }
+
+    .timeline-item.danger .timeline-badge {
+      border-color: var(--danger);
+      background: var(--danger);
+      box-shadow: 0 0 10px var(--danger);
+    }
+
+    .timeline-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .timeline-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .timeline-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Admin Message Note */
+    .admin-note-box {
+      background: rgba(239, 68, 68, 0.05);
+      border: 1px solid rgba(239, 68, 68, 0.15);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 28px;
+      border-left: 4px solid var(--danger);
+    }
+
+    .admin-note-box.correction {
+      background: rgba(245, 158, 11, 0.05);
+      border-color: rgba(245, 158, 11, 0.15);
+      border-left-color: var(--warning);
+    }
+
+    .admin-note-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+      color: #ffffff;
+    }
+
+    .admin-note-text {
+      font-size: 13px;
+      line-height: 1.4;
+      color: var(--text-main);
+    }
+
+    /* Button stack */
+    .btn-row {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .neo-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      border: 1px solid transparent;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    .neo-btn-primary {
+      background: #1e222b;
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.03);
+      box-shadow: 
+        -4px -4px 10px rgba(255, 255, 255, 0.02),
+        4px 4px 10px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .neo-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 
+        -6px -6px 12px rgba(255, 255, 255, 0.04),
+        6px 6px 15px rgba(0, 0, 0, 0.5),
+        0 0 12px rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #818cf8;
+    }
+
+    .neo-btn-secondary {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      border-color: rgba(255, 255, 255, 0.05);
+      box-shadow: 
+        -2px -2px 6px rgba(255, 255, 255, 0.01),
+        2px 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .neo-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .neo-btn:active {
+      transform: translateY(1px);
+      box-shadow: 
+        inset -2px -2px 6px rgba(255, 255, 255, 0.05),
+        inset 2px 2px 6px rgba(0, 0, 0, 0.6);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Registration Timeline</h1>
+
+    <div class="card">
+      <div class="meta-box">
+        <div>
+          <span class="meta-label">Registration ID</span>
+          <div class="meta-value" id="regId">Loading...</div>
+        </div>
+        <div>
+          <span class="meta-label">Registrant Name</span>
+          <div class="meta-value" id="userName">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Admin Note Box -->
+      <div id="adminNoteBox" class="admin-note-box" style="display: none;">
+        <div class="admin-note-title" id="adminNoteTitle">Organizer Message</div>
+        <div class="admin-note-text" id="adminNoteText">No message provided.</div>
+      </div>
+
+      <!-- Timeline Block -->
+      <div class="timeline" id="timelineList">
+        <!-- 1. Submission -->
+        <div class="timeline-item success" id="stepSubmit">
+          <div class="timeline-badge"></div>
+          <div class="timeline-title">Response Submitted</div>
+          <div class="timeline-time" id="timeSubmit">-</div>
+          <div class="timeline-desc">Details and manual transaction code recorded.</div>
+        </div>
+
+        <!-- 2. Manual Review -->
+        <div class="timeline-item active" id="stepReview">
+          <div class="timeline-badge"></div>
+          <div class="timeline-title">Manual Review in Progress</div>
+          <div class="timeline-time" id="timeReview">Ongoing</div>
+          <div class="timeline-desc" id="descReview">Organizer is verifying your transaction reference ID.</div>
+        </div>
+
+        <!-- 3. Final Outcome -->
+        <div class="timeline-item" id="stepOutcome">
+          <div class="timeline-badge"></div>
+          <div class="timeline-title" id="titleOutcome">Outcome Pending Approval</div>
+          <div class="timeline-time" id="timeOutcome">-</div>
+          <div class="timeline-desc" id="descOutcome">Awaiting review of transaction validation.</div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <a id="editBtn" class="neo-btn neo-btn-primary" href="#" style="display: none;">Edit Response Details</a>
+        <a id="viewBtn" class="neo-btn neo-btn-secondary" href="#">View Copy of Details</a>
+        <a class="neo-btn neo-btn-secondary" href="form.html">Back to Register Form</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BACKEND_URL = "https://forms-project-qcdc.onrender.com";
+
+    function goProblem(reason) {
+      window.location.href = `problem.html?reason=${encodeURIComponent(reason)}`;
+    }
+
+    async function loadTimeline() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get("token");
+
+      if (!token) {
+        goProblem("MISSING_TOKEN");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/status/${token}`);
+        if (!response.ok) {
+          throw new Error("Unable to fetch status timeline details.");
+        }
+
+        const resData = await response.json();
+        const data = resData.data;
+
+        document.getElementById("regId").innerText = data.registration_id;
+        document.getElementById("userName").innerText = data.full_name;
+
+        // Populate timestamps
+        document.getElementById("timeSubmit").innerText = data.created_at;
+
+        // Configure View copy link
+        document.getElementById("viewBtn").href = `view-response.html?token=${data.view_token}`;
+        document.getElementById("editBtn").href = `edit-response.html?token=${data.edit_token}`;
+
+        const paymentStatus = data.payment_status;
+        const noteBox = document.getElementById("adminNoteBox");
+        const noteText = document.getElementById("adminNoteText");
+        const noteTitle = document.getElementById("adminNoteTitle");
+
+        const reviewStep = document.getElementById("stepReview");
+        const outcomeStep = document.getElementById("stepOutcome");
+
+        if (paymentStatus === "PENDING_REVIEW") {
+          reviewStep.className = "timeline-item active";
+          outcomeStep.className = "timeline-item";
+          document.getElementById("timeReview").innerText = "Underway";
+          document.getElementById("titleOutcome").innerText = "Verification Pending";
+          document.getElementById("descOutcome").innerText = "Review starts once UTR is submitted.";
+        } else if (paymentStatus === "APPROVED") {
+          reviewStep.className = "timeline-item success";
+          outcomeStep.className = "timeline-item success";
+          
+          document.getElementById("timeReview").innerText = data.approved_at || "Done";
+          document.getElementById("titleOutcome").innerText = "Registration Confirmed";
+          document.getElementById("timeOutcome").innerText = data.approved_at || "";
+          document.getElementById("descOutcome").innerText = "Your payment was approved! A confirmation email has been dispatched.";
+          
+          // Lock edit button
+          document.getElementById("editBtn").style.display = "none";
+        } else if (paymentStatus === "REJECTED") {
+          reviewStep.className = "timeline-item success";
+          outcomeStep.className = "timeline-item danger";
+
+          document.getElementById("timeReview").innerText = data.rejected_at || "Done";
+          document.getElementById("titleOutcome").innerText = "Payment Rejected";
+          document.getElementById("timeOutcome").innerText = data.rejected_at || "";
+          document.getElementById("descOutcome").innerText = "Your transaction reference was marked invalid. Check instructions below.";
+          
+          // Show admin note
+          noteBox.style.display = "block";
+          noteBox.className = "admin-note-box";
+          noteTitle.innerText = "Rejection Reason";
+          noteText.innerText = data.admin_note || "Invalid UTR sequence. Please edit and submit a valid reference ID.";
+          
+          // Show Edit Button
+          if (!data.is_edit_locked) {
+            document.getElementById("editBtn").style.display = "inline-flex";
+          }
+        } else if (paymentStatus === "NEEDS_CORRECTION") {
+          reviewStep.className = "timeline-item success";
+          outcomeStep.className = "timeline-item warning";
+
+          document.getElementById("timeReview").innerText = "Pending Correction";
+          document.getElementById("titleOutcome").innerText = "Correction Required";
+          document.getElementById("timeOutcome").innerText = "";
+          document.getElementById("descOutcome").innerText = "Action required: Organizers requested correction of details.";
+
+          // Show admin note
+          noteBox.style.display = "block";
+          noteBox.className = "admin-note-box correction";
+          noteTitle.innerText = "Correction Request Details";
+          noteText.innerText = data.admin_note || "Please verify phone/roll number or payment reference.";
+
+          // Show Edit Button
+          if (!data.is_edit_locked) {
+            document.getElementById("editBtn").style.display = "inline-flex";
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        goProblem("TIMELINE_NOT_LOADED");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", loadTimeline);
+  </script>
+</body>
+</html>

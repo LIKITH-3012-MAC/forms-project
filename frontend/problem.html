@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>System Error - SAKRA VISION</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f1115;
+      --card-bg: rgba(22, 26, 33, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(239, 68, 68, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.04) 0%, transparent 40%);
+    }
+
+    .error-shell {
+      width: 100%;
+      max-width: 480px;
+      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 40px 32px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .error-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px auto;
+      color: var(--danger);
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .code-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 32px;
+      font-family: monospace;
+      font-size: 13px;
+      color: #f3f4f6;
+      word-break: break-all;
+      text-align: left;
+    }
+
+    .code-title {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    .btn-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .neo-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      border: 1px solid transparent;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    .neo-btn-primary {
+      background: #1e222b;
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.03);
+      box-shadow: 
+        -4px -4px 10px rgba(255, 255, 255, 0.02),
+        4px 4px 10px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .neo-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 
+        -6px -6px 12px rgba(255, 255, 255, 0.04),
+        6px 6px 15px rgba(0, 0, 0, 0.5),
+        0 0 12px rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #818cf8;
+    }
+
+    .neo-btn-secondary {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      border-color: rgba(255, 255, 255, 0.05);
+      box-shadow: 
+        -2px -2px 6px rgba(255, 255, 255, 0.01),
+        2px 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .neo-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .neo-btn:active {
+      transform: translateY(1px);
+      box-shadow: 
+        inset -2px -2px 6px rgba(255, 255, 255, 0.05),
+        inset 2px 2px 6px rgba(0, 0, 0, 0.6);
+    }
+  </style>
+</head>
+<body>
+  <main class="error-shell">
+    <div class="card">
+      <div class="error-icon">!</div>
+      <h1 id="errorTitle">System Interruption</h1>
+      <p class="subtitle" id="errorSubtitle">
+        We encountered a problem while processing your request. Please review the technical details below.
+      </p>
+
+      <div class="code-box">
+        <div class="code-title">Diagnostic Code</div>
+        <div id="errorCode">UNKNOWN_ERROR</div>
+      </div>
+
+      <div class="btn-stack">
+        <button class="neo-btn neo-btn-primary" onclick="window.location.reload()">
+          Retry Operation
+        </button>
+        <a class="neo-btn neo-btn-secondary" href="form.html">
+          Back to Form
+        </a>
+        <a id="supportBtn" class="neo-btn neo-btn-secondary" href="#">
+          Contact Support
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const SUPPORT_EMAIL = "likith.anumakonda@gmail.com";
+
+    function parseError() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const reason = urlParams.get("reason") || "SYSTEM_ERROR";
+      const details = urlParams.get("details") || "";
+
+      document.getElementById("errorCode").innerText = reason + (details ? `\nDetails: ${details}` : "");
+
+      const titleMap = {
+        "MISSING_TOKEN": "Secure Access Token Missing",
+        "API_CONFIGURATION_ERROR": "Service Configuration Failure",
+        "INVALID_OR_EXPIRED_TOKEN": "Invalid Security Signature",
+        "EDIT_LINK_EXPIRED_OR_INVALID": "Edit Link Expired / Revoked",
+        "TIMELINE_NOT_LOADED": "Timeline Load Interruption",
+        "OFFLINE": "Network Connection Disconnected"
+      };
+
+      const descMap = {
+        "MISSING_TOKEN": "The link you clicked does not contain the required verification token. Please double check the URL in your email inbox.",
+        "API_CONFIGURATION_ERROR": "The backend system configuration is temporarily unreachable. Please try again in a few minutes.",
+        "INVALID_OR_EXPIRED_TOKEN": "Your access token has either expired or is structurally malformed. Re-request access from your status email.",
+        "EDIT_LINK_EXPIRED_OR_INVALID": "The response is either locked due to payment verification confirmation, or your edit token has expired.",
+        "TIMELINE_NOT_LOADED": "We were unable to load the manual payment verification timeline at this time. Please reload to try again.",
+        "OFFLINE": "Your device has lost internet connectivity. Please verify your network and retry submission."
+      };
+
+      if (titleMap[reason]) {
+        document.getElementById("errorTitle").innerText = titleMap[reason];
+      }
+      if (descMap[reason]) {
+        document.getElementById("errorSubtitle").innerText = descMap[reason];
+      }
+
+      // Configure support link
+      const emailSubject = encodeURIComponent("Event Registration Issue");
+      const emailBody = encodeURIComponent(`Hello,\n\nI am experiencing an issue with my event registration. \n\nDiagnostic Code: ${reason}\nDetails: ${details}\n\nPlease help resolve this.\n\nThank you.`);
+      document.getElementById("supportBtn").href = `mailto:${SUPPORT_EMAIL}?subject=${emailSubject}&body=${emailBody}`;
+    }
+
+    window.addEventListener("DOMContentLoaded", parseError);
+  </script>
+</body>
+</html>

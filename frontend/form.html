@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Workshop 2026 - SAKRA VISION</title>
+  <title>Register - AI Workshop 2026</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -17,6 +17,8 @@
       --text-main: #f3f4f6;
       --text-muted: #9ca3af;
       --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
     }
 
     * {
@@ -26,229 +28,880 @@
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Inter', sans-serif;
       background-color: var(--bg-dark);
       color: var(--text-main);
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      overflow-x: hidden;
-      padding: 20px;
+      padding: 40px 20px;
       background-image: 
-        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.04) 0%, transparent 40%);
     }
 
-    .landing-shell {
+    .container {
       width: 100%;
-      max-width: 480px;
-      animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      max-width: 580px;
+      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    .event-card {
-      background: var(--card-bg);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--border-color);
-      border-radius: 24px;
-      padding: 40px 32px;
+    .form-header {
       text-align: center;
-      box-shadow: 
-        0 4px 30px rgba(0, 0, 0, 0.4),
-        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      margin-bottom: 32px;
     }
 
-    .brand-pill {
-      display: inline-block;
-      padding: 6px 16px;
-      background: rgba(99, 102, 241, 0.1);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      border-radius: 100px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #818cf8;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      margin-bottom: 24px;
+    .logo-container {
+      margin-bottom: 16px;
+    }
+
+    .logo-container img {
+      height: 48px;
+      object-fit: contain;
     }
 
     h1 {
-      font-size: clamp(24px, 5vw, 32px);
+      font-size: 26px;
       font-weight: 700;
-      line-height: 1.2;
-      letter-spacing: -0.02em;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
-    .subtitle {
-      font-size: 15px;
+    .deadline-banner {
+      font-size: 13px;
+      color: var(--warning);
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      padding: 8px 16px;
+      border-radius: 100px;
+      display: inline-block;
+      margin-top: 12px;
+    }
+
+    .seats-left {
+      font-size: 13px;
+      color: var(--success);
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
+    .step-indicator {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding: 0 8px;
+      position: relative;
+    }
+
+    .step-indicator::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.05);
+      z-index: 1;
+      transform: translateY(-50%);
+    }
+
+    .step {
+      background: var(--bg-dark);
+      border: 2px solid rgba(255, 255, 255, 0.1);
       color: var(--text-muted);
-      line-height: 1.6;
-      margin-bottom: 32px;
-      padding: 0 10px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      z-index: 2;
+      transition: all 0.3s ease;
     }
 
-    .meta-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 36px;
+    .step.active {
+      border-color: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
     }
 
-    .meta-card {
-      background: rgba(255, 255, 255, 0.02);
+    .step.completed {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      margin-bottom: 24px;
+    }
+
+    .form-step {
+      display: none;
+    }
+
+    .form-step.active {
+      display: block;
+      animation: slideIn 0.4s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .required::after {
+      content: ' *';
+      color: var(--danger);
+    }
+
+    input, select {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: #ffffff;
+      transition: all 0.3s ease;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    input[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .error-msg {
+      color: var(--danger);
+      font-size: 12px;
+      margin-top: 6px;
+      display: none;
+    }
+
+    .valid-msg {
+      color: var(--success);
+      font-size: 12px;
+      margin-top: 6px;
+      display: none;
+    }
+
+    /* UPI QR Display Card */
+    .qr-card {
+      background: rgba(255, 255, 255, 0.01);
       border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 16px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      transition: border-color 0.3s ease;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 20px;
     }
 
-    .meta-card:hover {
-      border-color: rgba(255, 255, 255, 0.1);
+    .qr-image-wrapper {
+      width: 180px;
+      height: 180px;
+      margin: 0 auto 16px auto;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #000;
     }
 
-    .meta-card span {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+    .qr-image-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .payment-info {
+      font-size: 14px;
       color: var(--text-muted);
     }
 
-    .meta-card strong {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--text-main);
+    .payment-amount {
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 4px 0;
     }
 
-    /* Premium Neumorphism Button */
+    .payment-vpa {
+      font-family: monospace;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 4px 10px;
+      border-radius: 6px;
+      color: #818cf8;
+      display: inline-block;
+      margin-top: 4px;
+    }
+
+    /* Checkbox list */
+    .checkbox-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .checkbox-group input {
+      width: auto;
+      margin-top: 4px;
+    }
+
+    /* Button row styles */
+    .btn-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 32px;
+    }
+
     .neo-btn {
+      flex: 1;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 100%;
-      padding: 16px 32px;
-      border-radius: 14px;
-      font-size: 16px;
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-size: 14px;
       font-weight: 600;
       text-decoration: none;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       cursor: pointer;
-      position: relative;
-      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid transparent;
     }
 
     .neo-btn-primary {
       background: #1e222b;
       color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.03);
       box-shadow: 
-        -4px -4px 10px rgba(255, 255, 255, 0.03),
-        4px 4px 10px rgba(0, 0, 0, 0.5),
+        -4px -4px 10px rgba(255, 255, 255, 0.02),
+        4px 4px 10px rgba(0, 0, 0, 0.4),
         inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
 
-    .neo-btn-primary::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, transparent 100%);
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    .neo-btn-primary:hover {
+    .neo-btn-primary:hover:not(:disabled) {
       transform: translateY(-2px);
       box-shadow: 
-        -6px -6px 12px rgba(255, 255, 255, 0.05),
-        6px 6px 15px rgba(0, 0, 0, 0.6),
-        0 0 15px rgba(99, 102, 241, 0.3);
+        -6px -6px 12px rgba(255, 255, 255, 0.04),
+        6px 6px 15px rgba(0, 0, 0, 0.5),
+        0 0 12px rgba(99, 102, 241, 0.25);
       border-color: rgba(99, 102, 241, 0.3);
       color: #818cf8;
     }
 
-    .neo-btn-primary:hover::before {
-      opacity: 1;
+    .neo-btn-secondary {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      border-color: rgba(255, 255, 255, 0.05);
+      box-shadow: 
+        -2px -2px 6px rgba(255, 255, 255, 0.01),
+        2px 2px 6px rgba(0, 0, 0, 0.3);
     }
 
-    .neo-btn-primary:active {
+    .neo-btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.04);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .neo-btn:active:not(:disabled) {
       transform: translateY(1px);
       box-shadow: 
         inset -2px -2px 6px rgba(255, 255, 255, 0.05),
-        inset 2px 2px 6px rgba(0, 0, 0, 0.8);
+        inset 2px 2px 6px rgba(0, 0, 0, 0.6);
     }
 
-    .safe-note {
-      font-size: 12px;
+    .neo-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 12, 16, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: #161a21;
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 32px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      transform: scale(0.95);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .modal-overlay.active .modal-card {
+      transform: scale(1);
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .review-list {
+      margin-bottom: 24px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .review-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 13px;
+    }
+
+    .review-label {
       color: var(--text-muted);
-      margin-top: 24px;
-      opacity: 0.8;
+    }
+
+    .review-value {
+      font-weight: 500;
+      color: #ffffff;
+      max-width: 60%;
+      text-align: right;
+      word-break: break-all;
+    }
+
+    /* Toast styling */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: rgba(22, 26, 33, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 14px 20px;
+      border-radius: 12px;
+      color: #ffffff;
+      font-size: 13px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      animation: slideInRight 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .toast.toast-danger { border-left-color: var(--danger); }
+    .toast.toast-success { border-left-color: var(--success); }
+
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Skeleton loader */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+      border-radius: 4px;
+    }
+
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
     }
   </style>
 </head>
 <body>
-  <main class="landing-shell">
-    <section class="event-card">
-      <div class="brand-pill">SAKRA VISION Events</div>
+  <div class="container">
+    <header class="form-header">
+      <div class="logo-container">
+        <img src="assets/logo.png" alt="SAKRA VISION" onerror="this.style.display='none'" />
+      </div>
+      <h1 id="eventTitle">AI Workshop 2026</h1>
+      <span class="deadline-banner" id="eventDeadline">Registration Deadline: Loading...</span>
+      <p class="seats-left" id="seatsLeft">Seats Left: Loading...</p>
+    </header>
 
-      <h1>AI Workshop 2026</h1>
-      <p class="subtitle">
-        Complete your registration securely using manual UPI QR verification.
-      </p>
+    <div class="step-indicator">
+      <div class="step active" id="step1-indicator">1</div>
+      <div class="step" id="step2-indicator">2</div>
+      <div class="step" id="step3-indicator">3</div>
+    </div>
 
-      <div class="meta-grid">
-        <div class="meta-card">
-          <span>Amount</span>
-          <strong>₹700</strong>
+    <form id="regForm" class="card" onsubmit="return false;">
+      <!-- STEP 1: Personal Details -->
+      <div class="form-step active" id="step1">
+        <div class="form-group">
+          <label class="required" for="full_name">Full Name</label>
+          <input type="text" id="full_name" required placeholder="John Doe" minlength="2" maxlength="150" />
+          <div class="error-msg" id="name-error">Please enter your full name (minimum 2 characters).</div>
         </div>
-        <div class="meta-card">
-          <span>Status</span>
-          <strong>Open</strong>
+
+        <div class="form-group">
+          <label class="required" for="email">Email Address</label>
+          <input type="email" id="email" required placeholder="john.doe@gmail.com" />
+          <div class="error-msg" id="email-error">Please enter a valid email address.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="required" for="phone">Phone Number</label>
+          <input type="tel" id="phone" required placeholder="9876543210" />
+          <div class="error-msg" id="phone-error">Please enter a valid 10-digit mobile number.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="required" for="college">College / Institution</label>
+          <input type="text" id="college" required placeholder="SAKRA Institute of Technology" />
+          <div class="error-msg">College name is required.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="required" for="department">Department</label>
+          <input type="text" id="department" required placeholder="Computer Science" />
+          <div class="error-msg">Department name is required.</div>
+        </div>
+
+        <div class="form-group mb-0">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div>
+              <label class="required" for="year">Year of Study</label>
+              <select id="year" required>
+                <option value="">Select Year</option>
+                <option value="1st Year">1st Year</option>
+                <option value="2nd Year">2nd Year</option>
+                <option value="3rd Year">3rd Year</option>
+                <option value="4th Year">4th Year</option>
+              </select>
+            </div>
+            <div>
+              <label for="roll_number">Roll Number</label>
+              <input type="text" id="roll_number" placeholder="CS22B1042" />
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="neo-btn neo-btn-primary" onclick="nextStep(2)">
+            Continue &rarr;
+          </button>
         </div>
       </div>
 
-      <a
-        id="openFormBtn"
-        class="neo-btn neo-btn-primary"
-        href="https://forms-project-qcdc.onrender.com/form"
-      >
-        Open Form &rarr;
-      </a>
+      <!-- STEP 2: Payment Details -->
+      <div class="form-step" id="step2">
+        <div class="qr-card">
+          <div class="qr-image-wrapper">
+            <img src="assets/payment-qr.png" alt="Payment QR Code" />
+          </div>
+          <div class="payment-info">
+            <p>Scan to pay registration fee</p>
+            <div class="payment-amount" id="paymentAmount">₹700</div>
+            <p>VPA Vicious Address:</p>
+            <span class="payment-vpa" id="paymentVPA">Loading...</span>
+          </div>
+        </div>
 
-      <p class="safe-note">
-        You will be redirected to the secure registration form.
-      </p>
-    </section>
-  </main>
+        <div class="form-group">
+          <label class="required" for="upi_reference_id">UPI Transaction Reference ID / UTR</label>
+          <input type="text" id="upi_reference_id" required placeholder="12-digit number (e.g. 304561234981)" minlength="8" maxlength="120" />
+          <div class="error-msg" id="utr-error">Please enter a valid unique UTR reference ID.</div>
+          <div class="valid-msg" id="utr-valid">✓ Unique Transaction Reference ID verified</div>
+        </div>
+
+        <div class="form-group">
+          <label class="required" for="screenshot_url">Payment Screenshot URL</label>
+          <input type="url" id="screenshot_url" required placeholder="https://imgur.com/your-payment-screenshot" />
+          <div class="error-msg" id="screenshot-error">Please enter a valid HTTP/HTTPS image URL.</div>
+        </div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="agreement" required />
+          <label for="agreement" class="required">I certify that the UTR/Reference ID provided matches my payment screenshot and represents a successful fee transfer of ₹700.</label>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="neo-btn neo-btn-secondary" onclick="prevStep(1)">
+            &larr; Back
+          </button>
+          <button type="button" class="neo-btn neo-btn-primary" onclick="openReviewModal()">
+            Submit Application
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Review Modal -->
+  <div class="modal-overlay" id="reviewModal">
+    <div class="modal-card">
+      <div class="modal-title">Review Details</div>
+      <div class="review-list" id="reviewList">
+        <!-- populated by JS -->
+      </div>
+      <div class="btn-row">
+        <button type="button" class="neo-btn neo-btn-secondary" onclick="closeReviewModal()">Edit</button>
+        <button type="button" class="neo-btn neo-btn-primary" id="confirmSubmitBtn" onclick="submitRegistration()">Confirm & Submit &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
 
   <script>
     const BACKEND_URL = "https://forms-project-qcdc.onrender.com";
-    const openFormBtn = document.getElementById("openFormBtn");
+    let currentStep = 1;
+    let eventConfig = null;
 
-    if (openFormBtn) {
-      openFormBtn.href = `${BACKEND_URL}/form`;
+    // Toast alert helper
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      toast.className = `toast toast-${type}`;
+      toast.innerText = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
     }
+
+    function goProblem(reason) {
+      window.location.href = `problem.html?reason=${encodeURIComponent(reason)}`;
+    }
+
+    // Network tracking
+    window.addEventListener("offline", () => showToast("You are currently offline", "danger"));
+    window.addEventListener("online", () => showToast("Network connected. You are back online.", "success"));
+
+    // Fetch config
+    async function loadConfig() {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/form-config`);
+        if (!response.ok) {
+          throw new Error("Unable to fetch form configuration");
+        }
+        eventConfig = await response.json();
+        
+        document.getElementById("eventTitle").innerText = eventConfig.event_name;
+        document.getElementById("eventDeadline").innerText = `Registration Deadline: ${eventConfig.deadline}`;
+        document.getElementById("seatsLeft").innerText = `Seats Left: ${eventConfig.seats_available} / ${eventConfig.seats_total}`;
+        document.getElementById("paymentAmount").innerText = `₹${eventConfig.event_amount}`;
+        document.getElementById("paymentVPA").innerText = eventConfig.upi_id;
+
+        if (!eventConfig.form_enabled) {
+          showToast("Registration is currently disabled or deadline has passed.", "danger");
+          document.querySelector("button").disabled = true;
+        }
+      } catch (err) {
+        console.error(err);
+        goProblem("API_CONFIGURATION_ERROR");
+      }
+    }
+
+    // Step navigation
+    function nextStep(step) {
+      if (step === 2) {
+        // Validate Step 1
+        const name = document.getElementById("full_name").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const phone = document.getElementById("phone").value.trim();
+        const college = document.getElementById("college").value.trim();
+        const dept = document.getElementById("department").value.trim();
+        const year = document.getElementById("year").value;
+
+        let valid = true;
+
+        if (name.length < 2) {
+          document.getElementById("name-error").style.display = "block";
+          valid = false;
+        } else {
+          document.getElementById("name-error").style.display = "none";
+        }
+
+        const emailReg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailReg.test(email)) {
+          document.getElementById("email-error").style.display = "block";
+          valid = false;
+        } else {
+          document.getElementById("email-error").style.display = "none";
+        }
+
+        const phoneReg = /^(\+91)?[6789]\d{9}$/;
+        if (!phoneReg.test(phone.replace(/\s+/g, ""))) {
+          document.getElementById("phone-error").style.display = "block";
+          valid = false;
+        } else {
+          document.getElementById("phone-error").style.display = "none";
+        }
+
+        if (!college || !dept || !year) {
+          showToast("Please fill all required personal details.", "danger");
+          valid = false;
+        }
+
+        if (!valid) return;
+      }
+
+      document.getElementById(`step${currentStep}`).classList.remove("active");
+      document.getElementById(`step${currentStep}-indicator`).classList.remove("active");
+      document.getElementById(`step${currentStep}-indicator`).classList.add("completed");
+
+      currentStep = step;
+
+      document.getElementById(`step${currentStep}`).classList.add("active");
+      document.getElementById(`step${currentStep}-indicator`).classList.add("active");
+    }
+
+    function prevStep(step) {
+      document.getElementById(`step${currentStep}`).classList.remove("active");
+      document.getElementById(`step${currentStep}-indicator`).classList.remove("active");
+
+      currentStep = step;
+
+      document.getElementById(`step${currentStep}`).classList.add("active");
+      document.getElementById(`step${currentStep}-indicator`).classList.add("active");
+      document.getElementById(`step${currentStep}-indicator`).classList.remove("completed");
+    }
+
+    // Debounced unique UTR check
+    let utrTimeout = null;
+    document.getElementById("upi_reference_id").addEventListener("input", function(e) {
+      const utr = e.target.value.trim();
+      const errEl = document.getElementById("utr-error");
+      const okEl = document.getElementById("utr-valid");
+
+      errEl.style.display = "none";
+      okEl.style.display = "none";
+
+      if (utr.length < 8) return;
+
+      clearTimeout(utrTimeout);
+      utrTimeout = setTimeout(async () => {
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/check-utr/${encodeURIComponent(utr)}`);
+          const data = await res.json();
+          if (!data.available) {
+            errEl.innerText = data.message;
+            errEl.style.display = "block";
+          } else {
+            okEl.style.display = "block";
+          }
+        } catch (err) {
+          console.error("UTR verification failed", err);
+        }
+      }, 500);
+    });
+
+    // LocalStorage draft auto-save
+    const formFields = ["full_name", "email", "phone", "college", "department", "year", "roll_number", "upi_reference_id", "screenshot_url"];
+    
+    function saveDraft() {
+      const draft = {};
+      formFields.forEach(id => {
+        draft[id] = document.getElementById(id).value;
+      });
+      localStorage.setItem("event_form_draft", JSON.stringify(draft));
+    }
+
+    function restoreDraft() {
+      const draftStr = localStorage.getItem("event_form_draft");
+      if (draftStr) {
+        try {
+          const draft = JSON.parse(draftStr);
+          formFields.forEach(id => {
+            if (draft[id] !== undefined) {
+              document.getElementById(id).value = draft[id];
+            }
+          });
+        } catch (e) {
+          console.error("Failed to restore draft", e);
+        }
+      }
+    }
+
+    formFields.forEach(id => {
+      document.getElementById(id).addEventListener("input", saveDraft);
+    });
+
+    // Review details modal
+    function openReviewModal() {
+      const utr = document.getElementById("upi_reference_id").value.trim();
+      const screenshot = document.getElementById("screenshot_url").value.trim();
+      const agree = document.getElementById("agreement").checked;
+
+      let valid = true;
+      if (utr.length < 8) {
+        document.getElementById("utr-error").style.display = "block";
+        valid = false;
+      }
+
+      if (!screenshot.match(/^https?:\/\/[^\s/$.?#].[^\s]*$/)) {
+        document.getElementById("screenshot-error").style.display = "block";
+        valid = false;
+      } else {
+        document.getElementById("screenshot-error").style.display = "none";
+      }
+
+      if (!agree) {
+        showToast("Please agree to the certification checkbox before submitting.", "warning");
+        valid = false;
+      }
+
+      if (!valid) return;
+
+      const listContainer = document.getElementById("reviewList");
+      listContainer.innerHTML = "";
+
+      const labelMap = {
+        "full_name": "Full Name",
+        "email": "Email Address",
+        "phone": "Phone Number",
+        "college": "College",
+        "department": "Department",
+        "year": "Year of Study",
+        "roll_number": "Roll Number",
+        "upi_reference_id": "UTR / Ref ID"
+      };
+
+      formFields.forEach(id => {
+        if (labelMap[id]) {
+          const val = document.getElementById(id).value || "N/A";
+          listContainer.innerHTML += `
+            <div class="review-item">
+              <span class="review-label">${labelMap[id]}</span>
+              <span class="review-value">${escapeHtml(val)}</span>
+            </div>
+          `;
+        }
+      });
+
+      document.getElementById("reviewModal").classList.add("active");
+    }
+
+    function closeReviewModal() {
+      document.getElementById("reviewModal").classList.remove("active");
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Submit payload to FastAPI
+    async function submitRegistration() {
+      const btn = document.getElementById("confirmSubmitBtn");
+      btn.disabled = true;
+      btn.innerText = "Submitting...";
+
+      const payload = {
+        full_name: document.getElementById("full_name").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        college: document.getElementById("college").value.trim(),
+        department: document.getElementById("department").value.trim(),
+        year: document.getElementById("year").value,
+        roll_number: document.getElementById("roll_number").value.trim() || null,
+        upi_reference_id: document.getElementById("upi_reference_id").value.trim(),
+        payment_screenshot_url: document.getElementById("screenshot_url").value.trim() || null,
+        confirm: document.getElementById("agreement").checked
+      };
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || data.detail || "Submission failed");
+        }
+
+        // Clear local storage draft
+        localStorage.removeItem("event_form_draft");
+
+        // Redirect to thank you page
+        window.location.href = data.redirect_url;
+      } catch (err) {
+        console.error(err);
+        showToast(err.message, "danger");
+        btn.disabled = false;
+        btn.innerText = "Confirm & Submit →";
+        closeReviewModal();
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      loadConfig();
+      restoreDraft();
+    });
   </script>
 </body>
 </html>

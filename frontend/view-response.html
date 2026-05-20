@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>View Response - SAKRA VISION</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f1115;
+      --card-bg: rgba(22, 26, 33, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.04) 0%, transparent 40%);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 580px;
+      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      text-align: center;
+      background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--primary);
+      margin-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 8px;
+    }
+
+    .field-group {
+      margin-bottom: 18px;
+    }
+
+    .field-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .field-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .field-value {
+      font-size: 15px;
+      color: #ffffff;
+      font-weight: 500;
+      word-break: break-all;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-PENDING_REVIEW {
+      background: rgba(245, 158, 11, 0.1);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .status-APPROVED {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .status-REJECTED {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .status-NEEDS_CORRECTION {
+      background: rgba(251, 191, 36, 0.1);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.2);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .neo-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid transparent;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    .neo-btn-primary {
+      background: #1e222b;
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.03);
+      box-shadow: 
+        -4px -4px 10px rgba(255, 255, 255, 0.02),
+        4px 4px 10px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .neo-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 
+        -6px -6px 12px rgba(255, 255, 255, 0.04),
+        6px 6px 15px rgba(0, 0, 0, 0.5),
+        0 0 12px rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #818cf8;
+    }
+
+    .neo-btn-secondary {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      border-color: rgba(255, 255, 255, 0.05);
+      box-shadow: 
+        -2px -2px 6px rgba(255, 255, 255, 0.01),
+        2px 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .neo-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .neo-btn:active {
+      transform: translateY(1px);
+      box-shadow: 
+        inset -2px -2px 6px rgba(255, 255, 255, 0.05),
+        inset 2px 2px 6px rgba(0, 0, 0, 0.6);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Attendee Registration Copy</h1>
+
+    <div class="card">
+      <div class="section-title">Registration Meta</div>
+      <div class="field-group">
+        <div class="field-label">Registration ID</div>
+        <div class="field-value" id="regId">Loading...</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Registration Status</div>
+        <div class="field-value" id="regStatus">Loading...</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Payment Verification</div>
+        <div class="field-value"><span id="payStatus" class="status-badge status-PENDING_REVIEW">PENDING</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Personal Information</div>
+      <div class="field-group">
+        <div class="field-label">Full Name</div>
+        <div class="field-value" id="fullName">Loading...</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Email Address</div>
+        <div class="field-value" id="email">Loading...</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Phone Number</div>
+        <div class="field-value" id="phone">Loading...</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">College / University</div>
+        <div class="field-value" id="college">Loading...</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Department / Year</div>
+        <div class="field-value" id="deptYear">Loading...</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Roll Number</div>
+        <div class="field-value" id="rollNumber">Loading...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Payment Reference</div>
+      <div class="field-group">
+        <div class="field-label">Event Name</div>
+        <div class="field-value" id="eventName">Loading...</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Amount Paid</div>
+        <div class="field-value" id="amount">Loading...</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">UPI Reference / UTR</div>
+        <div class="field-value" id="utr">Loading...</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Screenshot Link</div>
+        <div class="field-value"><a id="screenshotLink" href="#" target="_blank" style="color: var(--primary);">View Screenshot &nearr;</a></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <a id="backBtn" class="neo-btn neo-btn-secondary" href="javascript:history.back()">Back</a>
+      <a id="statusBtn" class="neo-btn neo-btn-primary" href="#">Check Status</a>
+    </div>
+  </div>
+
+  <script>
+    const BACKEND_URL = "https://forms-project-qcdc.onrender.com";
+
+    function goProblem(reason) {
+      window.location.href = `problem.html?reason=${encodeURIComponent(reason)}`;
+    }
+
+    async function loadResponse() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get("token");
+
+      if (!token) {
+        goProblem("MISSING_TOKEN");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/response/${token}`);
+        if (!response.ok) {
+          throw new Error("Failed to load registration response details");
+        }
+
+        const resData = await response.json();
+        const data = resData.data;
+
+        document.getElementById("regId").innerText = data.registration_id;
+        document.getElementById("regStatus").innerText = data.registration_status;
+        
+        const payBadge = document.getElementById("payStatus");
+        payBadge.className = `status-badge status-${data.payment_status}`;
+        payBadge.innerText = data.payment_status.replace("_", " ");
+
+        document.getElementById("fullName").innerText = data.full_name;
+        document.getElementById("email").innerText = data.email;
+        document.getElementById("phone").innerText = data.phone;
+        document.getElementById("college").innerText = data.college;
+        document.getElementById("deptYear").innerText = `${data.department} - ${data.year}`;
+        document.getElementById("rollNumber").innerText = data.roll_number || "N/A";
+        document.getElementById("eventName").innerText = data.event_name;
+        document.getElementById("amount").innerText = `₹${data.amount}`;
+        document.getElementById("utr").innerText = data.upi_reference_id;
+
+        if (data.payment_screenshot_url) {
+          document.getElementById("screenshotLink").href = data.payment_screenshot_url;
+        } else {
+          document.getElementById("screenshotLink").style.display = "none";
+        }
+
+        // Configure back to status
+        document.getElementById("statusBtn").href = `status.html?token=${token}`; // Normally view token can fetch public status too
+      } catch (err) {
+        console.error(err);
+        goProblem("INVALID_OR_EXPIRED_TOKEN");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", loadResponse);
+  </script>
+</body>
+</html>
