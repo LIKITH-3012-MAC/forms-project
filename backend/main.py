@@ -154,9 +154,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    print("GLOBAL ERROR:", repr(exc))
     user_agent = request.headers.get("user-agent", "Unknown")
     ip_address = get_client_ip(request)
-    print(f"Global exception: {exc}")
     log_problem_to_db(
         path=str(request.url.path),
         reason="Server issue",
@@ -169,8 +169,8 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={
             "success": False,
-            "message": "An unexpected server error occurred.",
-            "code": "INTERNAL_SERVER_ERROR"
+            "message": "Server error. Please try again or contact support.",
+            "code": "SERVER_ERROR"
         }
     )
 
@@ -186,7 +186,11 @@ async def root_redirect(request: Request):
 @app.get("/api/health")
 async def health_check():
     """Service health state endpoint."""
-    return {"status": "ok", "service": "event-registration-fastapi"}
+    return {
+        "success": True,
+        "status": "ok",
+        "message": "Backend running"
+    }
 
 @app.get("/api/form-config")
 async def get_form_config(db: Session = Depends(get_db)):
@@ -239,162 +243,180 @@ async def register_attendee(
     db: Session = Depends(get_db)
 ):
     """Processes new registration submission with payment screenshot upload."""
-    approved_count = db.query(models.EventRegistration).filter(
-        models.EventRegistration.payment_status == "APPROVED"
-    ).count()
-    seats_available = config.EVENT_SEATS_TOTAL - approved_count
-    if seats_available <= 0:
-        return JSONResponse(status_code=400, content={"success": False, "message": "Registration seats are fully booked."})
+    try:
+        # Debug logs
+        print("📩 /api/register called")
+        print("📧 email:", email)
+        print("📱 phone:", phone)
 
-    if is_deadline_passed():
-        return JSONResponse(status_code=400, content={"success": False, "message": "Registration deadline has expired."})
+        # Normalize UTR
+        upi_reference_id = upi_reference_id.strip().upper()
+        print("💳 UTR:", upi_reference_id)
+        print("🖼 file:", payment_screenshot.filename, payment_screenshot.content_type)
 
-    # Field validations
-    import re
-    full_name = full_name.strip()
-    if len(full_name) < 2 or len(full_name) > 150:
-        return JSONResponse(status_code=400, content={"success": False, "message": "Full Name must be between 2 and 150 characters."})
+        approved_count = db.query(models.EventRegistration).filter(
+            models.EventRegistration.payment_status == "APPROVED"
+        ).count()
+        seats_available = config.EVENT_SEATS_TOTAL - approved_count
+        if seats_available <= 0:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Registration seats are fully booked."})
 
-    email = email.strip().lower()
-    if not re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
-        return JSONResponse(status_code=400, content={"success": False, "message": "Please enter a valid email address."})
+        if is_deadline_passed():
+            return JSONResponse(status_code=400, content={"success": False, "message": "Registration deadline has expired."})
 
-    phone = re.sub(r"\s+", "", phone)
-    if not re.match(r"^(\+91)?[6789]\d{9}$", phone):
-        return JSONResponse(status_code=400, content={"success": False, "message": "Phone number must be a valid 10-digit number, optionally prefixed with +91."})
+        # Field validations
+        import re
+        full_name = full_name.strip()
+        if len(full_name) < 2 or len(full_name) > 150:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Full Name must be between 2 and 150 characters."})
 
-    upi_reference_id = upi_reference_id.strip().upper()
-    if len(upi_reference_id) < 8:
-        return JSONResponse(status_code=400, content={"success": False, "message": "UPI/UTR reference ID must be at least 8 characters long."})
+        email = email.strip().lower()
+        if not re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
+            return JSONResponse(status_code=400, content={"success": False, "message": "Please enter a valid email address."})
 
-    if not agreement:
-        return JSONResponse(status_code=400, content={"success": False, "message": "You must confirm that the details are correct."})
+        phone = re.sub(r"\s+", "", phone)
+        if not re.match(r"^(\+91)?[6789]\d{9}$", phone):
+            return JSONResponse(status_code=400, content={"success": False, "message": "Phone number must be a valid 10-digit number, optionally prefixed with +91."})
 
-    college = (college or "").strip()
-    department = (department or "").strip()
-    if not college:
-        return JSONResponse(status_code=400, content={"success": False, "message": "College name is required."})
-    if not department:
-        return JSONResponse(status_code=400, content={"success": False, "message": "Department is required."})
+        if len(upi_reference_id) < 8:
+            return JSONResponse(status_code=400, content={"success": False, "message": "UPI/UTR reference ID must be at least 8 characters long."})
 
-    # Duplicate UTR check
-    duplicate_utr = db.query(models.EventRegistration).filter(
-        models.EventRegistration.upi_reference_id == upi_reference_id
-    ).first()
-    if duplicate_utr:
-        return JSONResponse(status_code=400, content={"success": False, "message": "This transaction reference ID has already been submitted."})
+        if not agreement:
+            return JSONResponse(status_code=400, content={"success": False, "message": "You must confirm that the details are correct."})
 
-    # Duplicate Email check if restricted
-    if not config.ALLOW_DUPLICATE_EMAIL:
-        duplicate_email = db.query(models.EventRegistration).filter(
-            models.EventRegistration.email == email
+        college = (college or "").strip()
+        department = (department or "").strip()
+        if not college:
+            return JSONResponse(status_code=400, content={"success": False, "message": "College name is required."})
+        if not department:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Department is required."})
+
+        # Duplicate UTR check
+        duplicate_utr = db.query(models.EventRegistration).filter(
+            models.EventRegistration.upi_reference_id == upi_reference_id
         ).first()
-        if duplicate_email:
-            return JSONResponse(status_code=400, content={"success": False, "message": "This email address is already registered."})
+        if duplicate_utr:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "message": "This UPI Reference ID / UTR is already used. Please check and enter the correct payment reference."
+                }
+            )
 
-    # Validate payment screenshot file
-    if not payment_screenshot or not payment_screenshot.filename:
-        return JSONResponse(status_code=400, content={"success": False, "message": "Payment screenshot is required."})
+        # Validate payment screenshot file
+        if not payment_screenshot or not payment_screenshot.filename:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Payment screenshot is required."})
 
-    contents = await payment_screenshot.read()
-    file_size = len(contents)
-    if file_size == 0:
-        return JSONResponse(status_code=400, content={"success": False, "message": "Payment screenshot is required."})
+        contents = await payment_screenshot.read()
+        file_size = len(contents)
+        if file_size == 0:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Payment screenshot is required."})
 
-    filename = payment_screenshot.filename
-    content_type = payment_screenshot.content_type
+        filename = payment_screenshot.filename
+        content_type = payment_screenshot.content_type
 
-    ext = os.path.splitext(filename)[1].lower()
-    allowed_exts = {".jpg", ".jpeg", ".png", ".webp"}
-    if ext not in allowed_exts:
-        return JSONResponse(status_code=400, content={"success": False, "message": "Screenshot file must be JPG, PNG, or WEBP."})
+        allowed_types = ["image/jpeg", "image/png", "image/webp"]
+        if content_type not in allowed_types:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Only JPG, PNG, WEBP screenshots are allowed."})
 
-    allowed_types = {"image/jpeg", "image/png", "image/webp"}
-    if content_type not in allowed_types:
-        return JSONResponse(status_code=400, content={"success": False, "message": "Screenshot file must be JPG, PNG, or WEBP."})
+        max_size = 3 * 1024 * 1024
+        if file_size > max_size:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Screenshot size must be below 3MB."})
 
-    max_size = 3 * 1024 * 1024
-    if file_size > max_size:
-        return JSONResponse(status_code=400, content={"success": False, "message": "Screenshot size must be below 3MB."})
-
-    # Generate metadata
-    reg_id = generate_registration_id()
-    while db.query(models.EventRegistration).filter(models.EventRegistration.registration_id == reg_id).first():
+        # Generate metadata
         reg_id = generate_registration_id()
+        while db.query(models.EventRegistration).filter(models.EventRegistration.registration_id == reg_id).first():
+            reg_id = generate_registration_id()
 
-    total_submissions = db.query(models.EventRegistration).count()
-    response_num = total_submissions + 1
+        total_submissions = db.query(models.EventRegistration).count()
+        response_num = total_submissions + 1
 
-    client_ip = get_client_ip(request)
-    user_agent = request.headers.get("user-agent", "Unknown")
+        client_ip = get_client_ip(request)
+        user_agent = request.headers.get("user-agent", "Unknown")
 
-    registration = models.EventRegistration(
-        registration_id=reg_id,
-        response_number=response_num,
-        full_name=full_name,
-        email=email,
-        phone=phone,
-        college=college,
-        department=department,
-        year=year,
-        roll_number=roll_number,
-        event_name=config.EVENT_NAME,
-        amount=config.EVENT_AMOUNT,
-        upi_id=config.UPI_ID,
-        upi_reference_id=upi_reference_id,
-        payment_screenshot_blob=contents,
-        payment_screenshot_filename=filename,
-        payment_screenshot_mime=content_type,
-        payment_screenshot_size=file_size,
-        payment_status="PENDING_REVIEW",
-        registration_status="SUBMITTED",
-        edit_token=generate_secure_token(),
-        view_token=generate_secure_token(),
-        status_token=generate_secure_token(),
-        user_agent=user_agent,
-        ip_address=client_ip
-    )
+        registration = models.EventRegistration(
+            registration_id=reg_id,
+            response_number=response_num,
+            full_name=full_name,
+            email=email,
+            phone=phone,
+            college=college,
+            department=department,
+            year=year,
+            roll_number=roll_number,
+            event_name=config.EVENT_NAME,
+            amount=config.EVENT_AMOUNT,
+            upi_id=config.UPI_ID,
+            upi_reference_id=upi_reference_id,
+            payment_screenshot_blob=contents,
+            payment_screenshot_filename=filename,
+            payment_screenshot_mime=content_type,
+            payment_screenshot_size=file_size,
+            payment_status="PENDING_REVIEW",
+            registration_status="SUBMITTED",
+            edit_token=generate_secure_token(),
+            view_token=generate_secure_token(),
+            status_token=generate_secure_token(),
+            user_agent=user_agent,
+            ip_address=client_ip
+        )
 
-    db.add(registration)
-    db.commit()
-    db.refresh(registration)
+        db.add(registration)
+        db.commit()
+        db.refresh(registration)
 
-    # Audit log
-    audit_data = {
-        "full_name": full_name,
-        "email": email,
-        "phone": phone,
-        "college": college,
-        "department": department,
-        "year": year,
-        "roll_number": roll_number,
-        "upi_reference_id": upi_reference_id,
-        "filename": filename,
-        "size": file_size
-    }
-    audit_log = models.RegistrationAuditLog(
-        registration_id=reg_id,
-        action="SUBMITTED",
-        new_data=json.dumps(audit_data),
-        performed_by="user",
-        ip_address=client_ip
-    )
-    db.add(audit_log)
-    db.commit()
+        print("✅ DB insert success:", reg_id)
 
-    # Trigger Resend Email automation
-    email_sent = email_service.send_submission_received_email(registration, db)
-    registration.email_status = "SENT" if email_sent else "FAILED"
-    db.commit()
+        # Audit log
+        audit_data = {
+            "full_name": full_name,
+            "email": email,
+            "phone": phone,
+            "college": college,
+            "department": department,
+            "year": year,
+            "roll_number": roll_number,
+            "upi_reference_id": upi_reference_id,
+            "filename": filename,
+            "size": file_size
+        }
+        audit_log = models.RegistrationAuditLog(
+            registration_id=reg_id,
+            action="SUBMITTED",
+            new_data=json.dumps(audit_data),
+            performed_by="user",
+            ip_address=client_ip
+        )
+        db.add(audit_log)
+        db.commit()
 
-    return {
-        "success": True,
-        "registration_id": reg_id,
-        "view_token": registration.view_token,
-        "edit_token": registration.edit_token,
-        "status_token": registration.status_token,
-        "redirect_url": frontend_url(f"thank-you.html?rid={reg_id}&token={registration.status_token}")
-    }
+        # Trigger Resend Email automation resiliently
+        email_status = "FAILED"
+        try:
+            email_sent = email_service.send_submission_received_email(registration, db)
+            email_status = "SENT" if email_sent else "FAILED"
+        except Exception as email_error:
+            print("Email failed:", str(email_error))
+            email_status = "FAILED"
+        finally:
+            registration.email_status = email_status
+            db.commit()
+
+        print("📨 Email sent/failed:", email_status)
+
+        return {
+            "success": True,
+            "message": "Registration submitted successfully",
+            "registration_id": reg_id,
+            "view_token": registration.view_token,
+            "edit_token": registration.edit_token,
+            "status_token": registration.status_token,
+            "redirect_url": frontend_url(f"thank-you.html?rid={reg_id}&token={registration.status_token}")
+        }
+    except Exception as e:
+        print("❌ Register error:", repr(e))
+        raise e
 
 @app.get("/api/response/{view_token}")
 async def get_response_by_token(view_token: str, db: Session = Depends(get_db)):
