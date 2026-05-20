@@ -32,3 +32,20 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 The server will start at `http://127.0.0.1:8000`.
+
+## 🎨 Favicon Setup
+
+The custom-designed premium Favicon and App Icon System is fully configured inside the `frontend/` directory.
+
+### Icon Assets Included:
+- `frontend/assets/favicon.svg`: The source scalable vector icon using glowing neon accents and linear gradients.
+- `frontend/assets/favicon.ico`: Fallback ICO file containing multi-size resolutions (16px, 32px, 48px, etc.).
+- `frontend/assets/apple-touch-icon.png`: Apple-specific app touch icon (180x180).
+- `frontend/assets/icon-192.png`: PWA standard icon (192x192).
+- `frontend/assets/icon-512.png`: PWA standard high-resolution splash icon (512x512).
+- `frontend/assets/site.webmanifest`: Standard Web App Manifest specifying short name, theme colors, and icons.
+
+### Configuration:
+1. **HTML Integration**: Every frontend page has the absolute path tags embedded in its `<head>` structure.
+2. **PWA Enabled**: Built-in support for Android/iOS standalone homescreen launching with theme color `#0f172a`.
+3. **Regeneration (Optional)**: If you ever want to update the icons from a new SVG, simply run the Python image generator utility at `scratch/generate_icons.py` or compile via [RealFaviconGenerator](https://realfavicongenerator.net/).
