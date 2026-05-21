@@ -1,0 +1,116 @@
+/* Performance Loading & Button States Styling */
+
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+  border-radius: 999px;
+  animation: spin 700ms linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Button Loading, Success, Error States */
+.neo-btn.is-loading {
+  pointer-events: none;
+  opacity: 0.82;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.neo-btn.is-success {
+  filter: brightness(1.1);
+  background-color: #10b981 !important; /* Green success */
+  color: #ffffff !important;
+  border-color: #059669 !important;
+}
+
+.neo-btn.is-error {
+  filter: saturate(1.2);
+  background-color: #ef4444 !important; /* Red error */
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+}
+
+/* Skeleton Loading Elements */
+.skeleton {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.1) 37%, rgba(255, 255, 255, 0.05) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-loading 1.4s ease infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.skeleton-text {
+  height: 16px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+
+.skeleton-value {
+  height: 28px;
+  border-radius: 4px;
+  width: 60%;
+}
+
+/* Pagination Styling */
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  background: var(--card-bg, rgba(22, 26, 33, 0.7));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  padding: 12px 24px;
+  border-radius: 16px;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: var(--text-muted, #9ca3af);
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-main, #f3f4f6);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-btn.active {
+  background: var(--primary, #6366f1);
+  border-color: var(--primary, #6366f1);
+  color: #fff;
+}

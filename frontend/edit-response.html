@@ -259,6 +259,7 @@
     }
   </style>
   <link rel="stylesheet" href="/assets/theme.css">
+  <link rel="stylesheet" href="/assets/performance.css">
 </head>
 <body>
   <div class="theme-floating">
@@ -530,10 +531,14 @@
       }
     }
 
+    let isSaving = false;
+
     async function saveChanges() {
+      if (isSaving) return;
+      isSaving = true;
+
       const btn = document.getElementById("saveBtn");
-      btn.disabled = true;
-      btn.innerText = "Saving...";
+      setButtonLoading(btn, "Saving...");
 
       const name = document.getElementById("full_name").value.trim();
       const phone = document.getElementById("phone").value.trim();
@@ -572,8 +577,8 @@
       }
 
       if (!valid) {
-        btn.disabled = false;
-        btn.innerText = "Save Changes";
+        resetButton(btn);
+        isSaving = false;
         return;
       }
 
@@ -592,26 +597,24 @@
       }
 
       try {
-        const response = await fetch(`${BACKEND_URL}/api/edit/${editToken}`, {
+        const data = await apiFetch(`/api/edit/${editToken}`, {
           method: "PUT",
           body: formData
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to update changes");
-        }
-
         showToast("Details updated successfully!", "success");
+        markButtonSuccess(btn, "Saved ✅");
         setTimeout(() => {
           window.location.href = `status.html?token=${data.status_token}`;
         }, 1500);
       } catch (err) {
         console.error(err);
         showToast(err.message, "danger");
-        btn.disabled = false;
-        btn.innerText = "Save Changes";
+        markButtonError(btn, "Failed");
+      } finally {
+        setTimeout(() => {
+          isSaving = false;
+        }, 1500);
       }
     }
 

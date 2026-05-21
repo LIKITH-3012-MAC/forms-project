@@ -42,3 +42,117 @@ if (document.readyState === "loading") {
 } else {
   setupThemeToggle();
 }
+
+
+/* Button State Management & Fetch Utility Extensions */
+
+function setButtonLoading(button, loadingText = "Processing...") {
+  if (!button) return;
+
+  if (!button.dataset.originalHtml) {
+    button.dataset.originalHtml = button.innerHTML;
+  }
+
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  button.classList.add("is-loading");
+
+  button.innerHTML = `
+    <span class="spinner" aria-hidden="true"></span>
+    <span>${loadingText}</span>
+  `;
+}
+
+function resetButton(button) {
+  if (!button) return;
+
+  button.disabled = false;
+  button.removeAttribute("aria-busy");
+  button.classList.remove("is-loading");
+
+  if (button.dataset.originalHtml) {
+    button.innerHTML = button.dataset.originalHtml;
+  }
+}
+
+function markButtonSuccess(button, text = "Done ✅") {
+  if (!button) return;
+
+  button.classList.remove("is-loading");
+  button.classList.add("is-success");
+  button.innerHTML = `<span>${text}</span>`;
+
+  setTimeout(() => {
+    button.classList.remove("is-success");
+    resetButton(button);
+  }, 900);
+}
+
+function markButtonError(button, text = "Try Again") {
+  if (!button) return;
+
+  button.classList.remove("is-loading");
+  button.classList.add("is-error");
+  button.innerHTML = `<span>${text}</span>`;
+
+  setTimeout(() => {
+    button.classList.remove("is-error");
+    resetButton(button);
+  }, 1200);
+}
+
+async function apiFetch(path, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  const backendUrl = typeof CONFIG !== "undefined" && CONFIG.BACKEND_URL 
+    ? CONFIG.BACKEND_URL 
+    : (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
+       ? "http://localhost:8000" 
+       : "https://forms-project-qcdc.onrender.com");
+
+  try {
+    const res = await fetch(`${backendUrl}${path}`, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...(options.headers || {})
+      }
+    });
+
+    const contentType = res.headers.get("content-type") || "";
+    const data = contentType.includes("application/json")
+      ? await res.json()
+      : await res.text();
+
+    if (!res.ok) {
+      const message = typeof data === "object"
+        ? data.message || data.detail || "Request failed"
+        : "Request failed";
+      throw new Error(message);
+    }
+
+    return data;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Request timed out. Please try again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function apiFetchWithRetry(path, options = {}) {
+  try {
+    return await apiFetch(path, options, 15000);
+  } catch (err) {
+    if (!options.method || options.method === "GET") {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      return await apiFetch(path, options, 15000);
+    }
+    throw err;
+  }
+}
+

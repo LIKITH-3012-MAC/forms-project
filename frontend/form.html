@@ -511,6 +511,7 @@
     }
   </style>
   <link rel="stylesheet" href="/assets/theme.css">
+  <link rel="stylesheet" href="/assets/performance.css">
 </head>
 <body>
   <div class="theme-floating">
@@ -1026,11 +1027,15 @@
         .replace(/'/g, "&#039;");
     }
 
+    let isSubmitting = false;
+
     // Submit payload to FastAPI using FormData
     async function submitRegistration() {
+      if (isSubmitting) return;
+      isSubmitting = true;
+
       const btn = document.getElementById("confirmSubmitBtn");
-      btn.disabled = true;
-      btn.innerText = "Submitting...";
+      setButtonLoading(btn, "Submitting...");
 
       const formData = new FormData();
       formData.append("full_name", document.getElementById("full_name").value.trim());
@@ -1045,28 +1050,27 @@
       formData.append("payment_screenshot", selectedFile);
 
       try {
-        const response = await fetch(`${BACKEND_URL}/api/register`, {
+        const data = await apiFetch("/api/register", {
           method: "POST",
           body: formData
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || data.detail || "Submission failed");
-        }
-
         // Clear local storage draft
         localStorage.removeItem("event_form_draft");
 
-        // Redirect to thank you page
-        window.location.href = data.redirect_url;
+        markButtonSuccess(btn, "Done ✅");
+        setTimeout(() => {
+          window.location.href = data.redirect_url;
+        }, 800);
       } catch (err) {
         console.error(err);
         showToast(err.message, "danger");
-        btn.disabled = false;
-        btn.innerText = "Confirm & Submit →";
+        markButtonError(btn, "Failed");
         closeReviewModal();
+      } finally {
+        setTimeout(() => {
+          isSubmitting = false;
+        }, 1200);
       }
     }
 

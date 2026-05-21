@@ -1,5 +1,6 @@
 import datetime
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Enum, LargeBinary
+from sqlalchemy.orm import deferred
 from database import Base
 from utils import get_ist_time
 
@@ -11,23 +12,23 @@ class EventRegistration(Base):
     response_number = Column(Integer, nullable=False)
     full_name = Column(String(150), nullable=False)
     email = Column(String(150), index=True, nullable=False)
-    phone = Column(String(30), nullable=False)
-    college = Column(String(200), nullable=False)
-    department = Column(String(120), nullable=False)
-    year = Column(String(20), nullable=False)
+    phone = Column(String(30), index=True, nullable=False)
+    college = Column(String(200), index=True, nullable=False)
+    department = Column(String(120), index=True, nullable=False)
+    year = Column(String(20), index=True, nullable=False)
     roll_number = Column(String(50), nullable=True)
     
     event_name = Column(String(150), nullable=False)
     amount = Column(Integer, nullable=False)
     upi_id = Column(String(100), nullable=False)
     upi_reference_id = Column(String(120), unique=True, index=True, nullable=False)
-    payment_screenshot_blob = Column(LargeBinary(length=4294967295), nullable=True)
+    payment_screenshot_blob = deferred(Column(LargeBinary(length=4294967295), nullable=True))
     payment_screenshot_filename = Column(String(255), nullable=True)
     payment_screenshot_mime = Column(String(100), nullable=True)
     payment_screenshot_size = Column(Integer, nullable=True)
     
-    payment_status = Column(String(50), default="PENDING_REVIEW") # PENDING_REVIEW, APPROVED, REJECTED, NEEDS_CORRECTION
-    registration_status = Column(String(50), default="SUBMITTED") # SUBMITTED, UPDATED, CONFIRMED, REJECTED, CANCELLED
+    payment_status = Column(String(50), default="PENDING_REVIEW", index=True) # PENDING_REVIEW, APPROVED, REJECTED, NEEDS_CORRECTION
+    registration_status = Column(String(50), default="SUBMITTED", index=True) # SUBMITTED, UPDATED, CONFIRMED, REJECTED, CANCELLED
     email_status = Column(String(50), default="NOT_SENT") # NOT_SENT, SENT, FAILED
     
     edit_token = Column(String(100), unique=True, index=True, nullable=False)
@@ -45,7 +46,7 @@ class EventRegistration(Base):
     user_agent = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True) # IPv6 can be 45 chars
     
-    created_at = Column(DateTime, default=get_ist_time)
+    created_at = Column(DateTime, default=get_ist_time, index=True)
     updated_at = Column(DateTime, default=get_ist_time, onupdate=get_ist_time)
     approved_at = Column(DateTime, nullable=True)
     rejected_at = Column(DateTime, nullable=True)

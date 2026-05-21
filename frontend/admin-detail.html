@@ -325,6 +325,7 @@
     .toast.toast-danger { border-left-color: var(--danger); }
     .toast.toast-success { border-left-color: var(--success); }
   </style>
+  <link rel="stylesheet" href="/assets/performance.css">
 </head>
 <body>
   <header>
@@ -447,6 +448,7 @@
 
   <div class="toast-container" id="toastContainer"></div>
 
+  <script src="/assets/theme.js"></script>
   <script>
         const CONFIG = {
       BACKEND_URL:
@@ -611,35 +613,36 @@
       checkAuth();
       const note = document.getElementById("adminNote").value;
       const btn = document.getElementById(action === 'approve' ? 'btnApprove' : action === 'reject' ? 'btnReject' : 'btnCorrection');
-      const origText = btn.innerText;
 
-      btn.disabled = true;
-      btn.innerText = "Executing...";
+      setButtonLoading(btn, "Executing...");
 
       try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/${action}/${registrationId}`, {
+        const data = await apiFetch(`/api/admin/${action}/${registrationId}`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             "Authorization": `Bearer ${adminToken}`,
             "X-Admin-Token": adminToken
           },
           body: JSON.stringify({ admin_note: note })
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || data.detail || "Override action failed");
+        // Optimistically update badges immediately
+        if (data.payment_status) {
+          const payBadge = document.getElementById("payStatus");
+          payBadge.className = `badge badge-${data.payment_status}`;
+          payBadge.innerText = data.payment_status.replace("_", " ");
+        }
+        if (data.registration_status) {
+          document.getElementById("regStatus").innerText = data.registration_status;
         }
 
-        showToast(data.message, "success");
+        showToast(data.message || "Action executed successfully", "success");
+        markButtonSuccess(btn, "Done ✅");
         setTimeout(loadDetail, 1000);
       } catch (err) {
         console.error(err);
         showToast(err.message, "danger");
-        btn.disabled = false;
-        btn.innerText = origText;
+        markButtonError(btn, "Failed");
       }
     }
 
@@ -647,10 +650,11 @@
       checkAuth();
       const action = lock ? 'lock-edit' : 'unlock-edit';
       const btn = document.getElementById(lock ? 'btnLock' : 'btnUnlock');
-      btn.disabled = true;
+      
+      setButtonLoading(btn, lock ? "Locking..." : "Unlocking...");
 
       try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/${action}/${registrationId}`, {
+        const data = await apiFetch(`/api/admin/${action}/${registrationId}`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${adminToken}`,
@@ -658,27 +662,26 @@
           }
         });
 
-        const data = await response.json();
+        document.getElementById("btnLock").disabled = lock;
+        document.getElementById("btnUnlock").disabled = !lock;
 
-        if (!response.ok) throw new Error("Lock operation failed");
-
-        showToast(data.message, "success");
+        showToast(data.message || "Lock updated", "success");
+        markButtonSuccess(btn, lock ? "Locked 🔒" : "Unlocked 🔓");
         setTimeout(loadDetail, 1000);
       } catch (err) {
         console.error(err);
         showToast(err.message, "danger");
-        btn.disabled = false;
+        markButtonError(btn, "Failed");
       }
     }
 
     async function resendEmail() {
       checkAuth();
       const btn = document.getElementById("btnResend");
-      btn.disabled = true;
-      btn.innerText = "Sending...";
+      setButtonLoading(btn, "Sending...");
 
       try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/resend-email/${registrationId}`, {
+        const data = await apiFetch(`/api/admin/resend-email/${registrationId}`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${adminToken}`,
@@ -686,19 +689,13 @@
           }
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || data.detail || "Email resend failed");
-        }
-
-        showToast("Email dispatched successfully", "success");
+        showToast(data.message || "Email notification queued", "success");
+        markButtonSuccess(btn, "Sent ✅");
         setTimeout(loadDetail, 1000);
       } catch (err) {
         console.error(err);
         showToast(err.message, "danger");
-        btn.disabled = false;
-        btn.innerText = "Resend Status Email";
+        markButtonError(btn, "Failed");
       }
     }
 

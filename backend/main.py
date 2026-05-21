@@ -4,7 +4,7 @@ import io
 import json
 import datetime
 from typing import Optional
-from fastapi import FastAPI, Depends, Request, HTTPException, status, Response, Form, File, UploadFile
+from fastapi import FastAPI, Depends, Request, HTTPException, status, Response, Form, File, UploadFile, BackgroundTasks
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -17,10 +17,49 @@ import security
 import email_service
 from database import engine, get_db, SessionLocal
 from utils import generate_registration_id, generate_secure_token, escape_html, get_ist_time
+
 def frontend_url(path: str) -> str:
     base = config.FRONTEND_URL.rstrip("/")
     clean_path = path.lstrip("/")
     return f"{base}/{clean_path}"
+
+def send_email_background(registration_id: int, email_type: str):
+    db = SessionLocal()
+    registration = None
+    try:
+        registration = db.query(models.EventRegistration).filter(models.EventRegistration.id == registration_id).first()
+        if not registration:
+            return
+
+        if email_type == "submission_received":
+            email_sent = email_service.send_submission_received_email(registration, db)
+        elif email_type == "details_updated":
+            email_sent = email_service.send_details_updated_email(registration, db)
+        elif email_type == "payment_approved":
+            email_sent = email_service.send_payment_approved_email(registration, db)
+        elif email_type == "payment_rejected":
+            email_sent = email_service.send_payment_rejected_email(registration, db)
+        elif email_type == "needs_correction":
+            email_sent = email_service.send_needs_correction_email(registration, db)
+        elif email_type == "resend_email":
+            email_sent = email_service.send_latest_status_email(registration, db)
+        else:
+            email_sent = False
+
+        registration.email_status = "SENT" if email_sent else "FAILED"
+        db.commit()
+    except Exception as e:
+        print(f"Background email {email_type} failed:", repr(e))
+        try:
+            if registration:
+                registration.email_status = "FAILED"
+                db.commit()
+        except Exception as db_err:
+            print("Failed to rollback/commit email status in background:", repr(db_err))
+            db.rollback()
+    finally:
+        db.close()
+
 # Initialize tables
 models.Base.metadata.create_all(bind=engine)
 
@@ -229,6 +268,7 @@ async def check_utr(utr: str, db: Session = Depends(get_db)):
 
 @app.post("/api/register")
 async def register_attendee(
+    background_tasks: BackgroundTasks,
     full_name: str = Form(...),
     email: str = Form(...),
     phone: str = Form(...),
@@ -391,19 +431,9 @@ async def register_attendee(
         db.add(audit_log)
         db.commit()
 
-        # Trigger Resend Email automation resiliently
-        email_status = "FAILED"
-        try:
-            email_sent = email_service.send_submission_received_email(registration, db)
-            email_status = "SENT" if email_sent else "FAILED"
-        except Exception as email_error:
-            print("Email failed:", str(email_error))
-            email_status = "FAILED"
-        finally:
-            registration.email_status = email_status
-            db.commit()
+        # Trigger email in background task
+        background_tasks.add_task(send_email_background, registration.id, "submission_received")
 
-        print("📨 Email sent/failed:", email_status)
 
         return {
             "success": True,
@@ -518,6 +548,7 @@ async def get_editable_fields(edit_token: str, db: Session = Depends(get_db)):
 @app.put("/api/edit/{edit_token}")
 async def update_registration(
     edit_token: str,
+    background_tasks: BackgroundTasks,
     full_name: str = Form(...),
     phone: str = Form(...),
     college: str = Form(...),
@@ -662,10 +693,9 @@ async def update_registration(
     db.add(audit_log)
     db.commit()
 
-    # Trigger details updated email
-    email_sent = email_service.send_details_updated_email(reg, db)
-    reg.email_status = "SENT" if email_sent else "FAILED"
-    db.commit()
+    # Trigger details updated email in background task
+    background_tasks.add_task(send_email_background, reg.id, "details_updated")
+
 
     return {
         "success": True,
@@ -691,10 +721,15 @@ async def admin_login(payload: schemas.AdminLogin):
 async def admin_registrations(
     search: Optional[str] = "",
     payment_status: Optional[str] = "",
+    page: int = 1,
+    page_size: int = 25,
     db: Session = Depends(get_db),
     admin_auth: str = Depends(verify_admin_token)
 ):
-    """Retrieve administrative list of registrations with statistics."""
+    """Retrieve administrative list of registrations with statistics and pagination."""
+    page = max(1, page)
+    page_size = max(1, min(100, page_size))
+
     total = db.query(models.EventRegistration).count()
     pending = db.query(models.EventRegistration).filter(models.EventRegistration.payment_status == "PENDING_REVIEW").count()
     approved = db.query(models.EventRegistration).filter(models.EventRegistration.payment_status == "APPROVED").count()
@@ -728,6 +763,10 @@ async def admin_registrations(
     if payment_status:
         query = query.filter(models.EventRegistration.payment_status == payment_status)
 
+    total_filtered = query.count()
+    import math
+    total_pages = math.ceil(total_filtered / page_size) if total_filtered > 0 else 1
+
     ordered_query = query.order_by(
         case(
             (models.EventRegistration.payment_status == "PENDING_REVIEW", 1),
@@ -736,7 +775,7 @@ async def admin_registrations(
         desc(models.EventRegistration.created_at)
     )
 
-    records = ordered_query.all()
+    records = ordered_query.offset((page - 1) * page_size).limit(page_size).all()
     
     registrations_data = []
     for r in records:
@@ -755,7 +794,13 @@ async def admin_registrations(
     return {
         "success": True,
         "stats": stats,
-        "registrations": registrations_data
+        "registrations": registrations_data,
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total_filtered": total_filtered,
+            "total_pages": total_pages
+        }
     }
 
 @app.get("/api/payment-screenshot/{registration_id}")
@@ -880,6 +925,7 @@ async def admin_approve_payment(
     registration_id: str,
     payload: schemas.AdminAction,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     admin_auth: str = Depends(verify_admin_token)
 ):
@@ -892,7 +938,12 @@ async def admin_approve_payment(
         raise HTTPException(status_code=404, detail="Registration record not found.")
 
     if reg.payment_status == "APPROVED":
-        return {"success": True, "message": "Already approved"}
+        return {
+            "success": True,
+            "message": "Already approved",
+            "payment_status": "APPROVED",
+            "registration_status": "CONFIRMED"
+        }
 
     old_status = reg.payment_status
     reg.payment_status = "APPROVED"
@@ -915,17 +966,22 @@ async def admin_approve_payment(
     db.add(audit)
     db.commit()
 
-    email_sent = email_service.send_payment_approved_email(reg, db)
-    reg.email_status = "SENT" if email_sent else "FAILED"
-    db.commit()
+    # Trigger approval email in background task
+    background_tasks.add_task(send_email_background, reg.id, "payment_approved")
 
-    return {"success": True, "message": "Payment verified and registration confirmed successfully"}
+    return {
+        "success": True,
+        "message": "Payment verified and registration confirmed successfully",
+        "payment_status": "APPROVED",
+        "registration_status": "CONFIRMED"
+    }
 
 @app.post("/api/admin/reject/{registration_id}")
 async def admin_reject_payment(
     registration_id: str,
     payload: schemas.AdminAction,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     admin_auth: str = Depends(verify_admin_token)
 ):
@@ -958,17 +1014,22 @@ async def admin_reject_payment(
     db.add(audit)
     db.commit()
 
-    email_sent = email_service.send_payment_rejected_email(reg, db)
-    reg.email_status = "SENT" if email_sent else "FAILED"
-    db.commit()
+    # Trigger rejection email in background task
+    background_tasks.add_task(send_email_background, reg.id, "payment_rejected")
 
-    return {"success": True, "message": "Registration rejected successfully"}
+    return {
+        "success": True,
+        "message": "Registration rejected successfully",
+        "payment_status": "REJECTED",
+        "registration_status": "REJECTED"
+    }
 
 @app.post("/api/admin/needs-correction/{registration_id}")
 async def admin_mark_correction(
     registration_id: str,
     payload: schemas.AdminAction,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     admin_auth: str = Depends(verify_admin_token)
 ):
@@ -999,11 +1060,15 @@ async def admin_mark_correction(
     db.add(audit)
     db.commit()
 
-    email_sent = email_service.send_needs_correction_email(reg, db)
-    reg.email_status = "SENT" if email_sent else "FAILED"
-    db.commit()
+    # Trigger correction email in background task
+    background_tasks.add_task(send_email_background, reg.id, "needs_correction")
 
-    return {"success": True, "message": "Registration marked as needing correction"}
+    return {
+        "success": True,
+        "message": "Registration marked as needing correction",
+        "payment_status": "NEEDS_CORRECTION",
+        "registration_status": reg.registration_status
+    }
 
 @app.post("/api/admin/lock-edit/{registration_id}")
 async def admin_lock_edit(
@@ -1069,10 +1134,11 @@ async def admin_unlock_edit(
 async def admin_resend_email(
     registration_id: str,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     admin_auth: str = Depends(verify_admin_token)
 ):
-    """Triggers resend of the latest status email notifications."""
+    """Triggers resend of the latest status email notifications in background."""
     reg = db.query(models.EventRegistration).filter(
         models.EventRegistration.registration_id == registration_id
     ).first()
@@ -1080,25 +1146,22 @@ async def admin_resend_email(
     if not reg:
         raise HTTPException(status_code=404, detail="Registration record not found.")
 
-    email_sent = email_service.send_latest_status_email(reg, db)
-    
     client_ip = get_client_ip(request)
     audit = models.RegistrationAuditLog(
         registration_id=registration_id,
         action="RESEND_EMAIL",
-        new_data=f"Resent latest status email. Delivery Status: {'Success' if email_sent else 'Failed'}",
+        new_data="Queued status email resend in background",
         performed_by="admin",
         ip_address=client_ip
     )
     db.add(audit)
     
-    reg.email_status = "SENT" if email_sent else "FAILED"
+    reg.email_status = "NOT_SENT"
     db.commit()
 
-    if not email_sent:
-        raise HTTPException(status_code=500, detail="Failed to send email. Check API key status.")
+    background_tasks.add_task(send_email_background, reg.id, "resend_email")
 
-    return {"success": True, "message": "Status email notification resent successfully"}
+    return {"success": True, "message": "Status email notification queued successfully"}
 
 @app.get("/api/admin/export.csv")
 async def admin_export_csv(
@@ -1576,12 +1639,8 @@ def get_submission_quality_data(db: Session, days: Optional[str] = None, payment
     }
 
 def get_recent_activity_data(db: Session, days: Optional[str] = None, payment_status: Optional[str] = None, department: Optional[str] = None):
-    reg_q = db.query(models.EventRegistration.registration_id)
-    reg_q = apply_analytics_filters(reg_q, models.EventRegistration, days, payment_status, department)
-    reg_ids = [r[0] for r in reg_q.all()]
-
-    if not reg_ids:
-        return []
+    reg_subquery = db.query(models.EventRegistration.registration_id)
+    reg_subquery = apply_analytics_filters(reg_subquery, models.EventRegistration, days, payment_status, department).subquery()
 
     q = db.query(
         models.RegistrationAuditLog.created_at,
@@ -1592,8 +1651,9 @@ def get_recent_activity_data(db: Session, days: Optional[str] = None, payment_st
         models.EventRegistration,
         models.EventRegistration.registration_id == models.RegistrationAuditLog.registration_id,
         isouter=True
-    ).filter(
-        models.RegistrationAuditLog.registration_id.in_(reg_ids)
+    ).join(
+        reg_subquery,
+        reg_subquery.c.registration_id == models.RegistrationAuditLog.registration_id
     ).order_by(desc(models.RegistrationAuditLog.created_at)).limit(10).all()
 
     res = []

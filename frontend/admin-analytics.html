@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/performance.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -596,7 +597,7 @@
       <a href="/admin-dashboard.html" class="neo-btn neo-btn-secondary">
         ← Dashboard
       </a>
-      <button class="neo-btn neo-btn-secondary" onclick="loadAnalytics()">
+      <button id="refreshBtn" class="neo-btn neo-btn-secondary" onclick="loadAnalytics(true)">
         🔄 Refresh
       </button>
       <button class="neo-btn neo-btn-primary" onclick="exportCSV()">
@@ -913,6 +914,7 @@
 
   <div class="toast-container" id="toastContainer"></div>
 
+  <script src="/assets/theme.js"></script>
   <script>
     const CONFIG = {
       BACKEND_URL:
@@ -932,6 +934,7 @@
 
     const BACKEND_URL = CONFIG.BACKEND_URL;
     let adminToken = localStorage.getItem("admin_token");
+    const analyticsCache = {};
 
     function showToast(message, type = "info") {
       const container = document.getElementById("toastContainer");
@@ -1242,15 +1245,114 @@
       });
     }
 
-    // Load Live Analytics Data
-    async function loadAnalytics() {
-      document.body.classList.add("loading");
-      document.getElementById("errorPanel").style.display = "none";
-      document.getElementById("noDataPanel").style.display = "none";
+    function renderAnalyticsData(data) {
+      // Render Summary
+      document.getElementById("sumTotal").innerText = data.summary.total_registrations;
+      document.getElementById("sumPending").innerText = data.summary.pending_review;
+      document.getElementById("sumApproved").innerText = data.summary.approved;
+      document.getElementById("sumRejected").innerText = data.summary.rejected;
+      document.getElementById("sumCorrection").innerText = data.summary.needs_correction;
+      document.getElementById("sumToday").innerText = data.summary.today_submissions;
+      document.getElementById("sumApprovalRate").innerText = `${data.summary.approval_rate}%`;
 
+      document.getElementById("ratePending").innerText = `${data.summary.pending_rate}% of submissions`;
+      document.getElementById("rateApproved").innerText = `${data.summary.approval_rate}% approval rate`;
+      document.getElementById("rateRejected").innerText = `${data.summary.rejection_rate}% rejection rate`;
+
+      document.getElementById("sumApprovedAmount").innerText = `₹${data.summary.approved_amount.toLocaleString('en-IN')}`;
+      document.getElementById("sumTotalAmount").innerText = `Expected: ₹${data.summary.total_expected_amount.toLocaleString('en-IN')}`;
+
+      // Render Charts
+      renderLineChart("dailySubsChart", data.daily_submissions, "count", "label", "Submissions");
+      renderDoughnutChart("paymentStatusChart", data.payment_status, "count", "label", "Verification Status");
+      renderAmountsBarChart("paymentAmountsChart", data.payment_amounts, "amount", "label", "Amount");
+      renderBarChart("registrationProgressChart", data.registration_status, "count", "label", "Progress");
+      renderBarChart("departmentChart", data.departments, "count", "label", "Department", "rgba(99, 102, 241, 0.75)", "rgba(99, 102, 241, 1)");
+      renderDoughnutChart("yearChart", data.years, "count", "label", "Year Group");
+      renderBarChart("hourlyPeakChart", data.hourly_submissions, "count", "label", "Submissions", "rgba(245, 158, 11, 0.75)", "rgba(245, 158, 11, 1)");
+      renderHorizontalBarChart("topCollegesChart", data.top_colleges, "count", "label", "Attendees");
+      renderDoughnutChart("editActivityChart", data.edit_activity, "count", "label", "Edits Log");
+      renderDoughnutChart("emailStatusChart", data.email_status, "count", "label", "Notifications");
+
+      // Render Quality Indicators
+      document.getElementById("qScreenshotVal").innerText = data.submission_quality.with_screenshot;
+      document.getElementById("qNoScreenshotVal").innerText = data.submission_quality.without_screenshot;
+      document.getElementById("qCollegeVal").innerText = data.submission_quality.missing_college;
+      document.getElementById("qDeptVal").innerText = data.submission_quality.missing_department;
+      document.getElementById("qDuplicateVal").innerText = data.submission_quality.duplicate_email_count;
+
+      // Visual alerts based on counts
+      toggleQualityStyle("qualityCollegeCard", data.submission_quality.missing_college, 0, 3);
+      toggleQualityStyle("qualityDeptCard", data.submission_quality.missing_department, 0, 3);
+      toggleQualityStyle("qualityDuplicateCard", data.submission_quality.duplicate_email_count, 0, 5);
+
+      // Render Recent Activity Timeline
+      const timelineEl = document.getElementById("timelineContainer");
+      timelineEl.innerHTML = "";
+      if (data.recent_activity && data.recent_activity.length > 0) {
+        data.recent_activity.forEach(act => {
+          timelineEl.innerHTML += `
+            <div class="timeline-item">
+              <div class="timeline-badge badge-${act.type}">
+                ${getBadgeIcon(act.type)}
+              </div>
+              <div class="timeline-content">
+                <div class="timeline-meta">
+                  <span class="timeline-user">${escapeHtml(act.name)}</span>
+                  <span class="timeline-time">${act.time}</span>
+                </div>
+                <div class="timeline-message">${escapeHtml(act.message)}</div>
+              </div>
+            </div>
+          `;
+        });
+      } else {
+        timelineEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 40px; font-size: 13px;">No recent activity logged.</div>`;
+      }
+
+      // Compute Dynamic Insights
+      renderInsights(data);
+    }
+
+    // Load Live Analytics Data
+    async function loadAnalytics(forceRefresh = false) {
       const selectedDays = document.getElementById("daysFilter").value;
       const selectedPaymentStatus = document.getElementById("paymentStatusFilter").value;
       const selectedDepartment = document.getElementById("departmentFilter").value;
+      const cacheKey = `${selectedDays}_${selectedPaymentStatus}_${selectedDepartment}`;
+
+      if (!forceRefresh && analyticsCache[cacheKey]) {
+        document.getElementById("errorPanel").style.display = "none";
+        document.getElementById("noDataPanel").style.display = "none";
+
+        const data = analyticsCache[cacheKey];
+        if (data.summary.total_registrations === 0 && selectedDays === "all" && selectedPaymentStatus === "all" && selectedDepartment === "all") {
+          document.body.classList.remove("loading");
+          document.getElementById("noDataPanel").style.display = "block";
+          return;
+        }
+
+        const deptFilter = document.getElementById("departmentFilter");
+        if (deptFilter.options.length === 1 && data.unique_departments) {
+          data.unique_departments.forEach(dept => {
+            const opt = document.createElement("option");
+            opt.value = dept;
+            opt.innerText = dept;
+            if (selectedDepartment === dept) opt.selected = true;
+            deptFilter.appendChild(opt);
+          });
+        }
+
+        renderAnalyticsData(data);
+        return;
+      }
+
+      const refreshBtn = document.getElementById("refreshBtn");
+      if (forceRefresh && refreshBtn) setButtonLoading(refreshBtn);
+
+      document.body.classList.add("loading");
+      document.getElementById("errorPanel").style.display = "none";
+      document.getElementById("noDataPanel").style.display = "none";
 
       try {
         const params = new URLSearchParams();
@@ -1258,32 +1360,24 @@
         if (selectedPaymentStatus && selectedPaymentStatus !== "all") params.append("payment_status", selectedPaymentStatus);
         if (selectedDepartment && selectedDepartment !== "all") params.append("department", selectedDepartment);
 
-        const response = await fetch(`${BACKEND_URL}/api/admin/analytics/all?${params}`, {
+        const data = await apiFetchWithRetry(`/api/admin/analytics/all?${params}`, {
           headers: {
             "Authorization": `Bearer ${adminToken}`,
             "X-Admin-Token": adminToken
           }
         });
 
-        if (response.status === 401) {
-          handleLogout();
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error("FastAPI Analytics Endpoint Error");
-        }
-
-        const data = await response.json();
-
         if (!data.success) {
           throw new Error(data.message || "Failed to load response data");
         }
+
+        analyticsCache[cacheKey] = data;
 
         // Check if there is absolutely no data in DB
         if (data.summary.total_registrations === 0 && selectedDays === "all" && selectedPaymentStatus === "all" && selectedDepartment === "all") {
           document.body.classList.remove("loading");
           document.getElementById("noDataPanel").style.display = "block";
+          if (forceRefresh && refreshBtn) resetButton(refreshBtn);
           return;
         }
 
@@ -1299,78 +1393,20 @@
           });
         }
 
-        // Render Summary
-        document.getElementById("sumTotal").innerText = data.summary.total_registrations;
-        document.getElementById("sumPending").innerText = data.summary.pending_review;
-        document.getElementById("sumApproved").innerText = data.summary.approved;
-        document.getElementById("sumRejected").innerText = data.summary.rejected;
-        document.getElementById("sumCorrection").innerText = data.summary.needs_correction;
-        document.getElementById("sumToday").innerText = data.summary.today_submissions;
-        document.getElementById("sumApprovalRate").innerText = `${data.summary.approval_rate}%`;
-
-        document.getElementById("ratePending").innerText = `${data.summary.pending_rate}% of submissions`;
-        document.getElementById("rateApproved").innerText = `${data.summary.approval_rate}% approval rate`;
-        document.getElementById("rateRejected").innerText = `${data.summary.rejection_rate}% rejection rate`;
-
-        document.getElementById("sumApprovedAmount").innerText = `₹${data.summary.approved_amount.toLocaleString('en-IN')}`;
-        document.getElementById("sumTotalAmount").innerText = `Expected: ₹${data.summary.total_expected_amount.toLocaleString('en-IN')}`;
-
-        // Render Charts
-        renderLineChart("dailySubsChart", data.daily_submissions, "count", "label", "Submissions");
-        renderDoughnutChart("paymentStatusChart", data.payment_status, "count", "label", "Verification Status");
-        renderAmountsBarChart("paymentAmountsChart", data.payment_amounts, "amount", "label", "Amount");
-        renderBarChart("registrationProgressChart", data.registration_status, "count", "label", "Progress");
-        renderBarChart("departmentChart", data.departments, "count", "label", "Department", "rgba(99, 102, 241, 0.75)", "rgba(99, 102, 241, 1)");
-        renderDoughnutChart("yearChart", data.years, "count", "label", "Year Group");
-        renderBarChart("hourlyPeakChart", data.hourly_submissions, "count", "label", "Submissions", "rgba(245, 158, 11, 0.75)", "rgba(245, 158, 11, 1)");
-        renderHorizontalBarChart("topCollegesChart", data.top_colleges, "count", "label", "Attendees");
-        renderDoughnutChart("editActivityChart", data.edit_activity, "count", "label", "Edits Log");
-        renderDoughnutChart("emailStatusChart", data.email_status, "count", "label", "Notifications");
-
-        // Render Quality Indicators
-        document.getElementById("qScreenshotVal").innerText = data.submission_quality.with_screenshot;
-        document.getElementById("qNoScreenshotVal").innerText = data.submission_quality.without_screenshot;
-        document.getElementById("qCollegeVal").innerText = data.submission_quality.missing_college;
-        document.getElementById("qDeptVal").innerText = data.submission_quality.missing_department;
-        document.getElementById("qDuplicateVal").innerText = data.submission_quality.duplicate_email_count;
-
-        // Visual alerts based on counts
-        toggleQualityStyle("qualityCollegeCard", data.submission_quality.missing_college, 0, 3);
-        toggleQualityStyle("qualityDeptCard", data.submission_quality.missing_department, 0, 3);
-        toggleQualityStyle("qualityDuplicateCard", data.submission_quality.duplicate_email_count, 0, 5);
-
-        // Render Recent Activity Timeline
-        const timelineEl = document.getElementById("timelineContainer");
-        timelineEl.innerHTML = "";
-        if (data.recent_activity && data.recent_activity.length > 0) {
-          data.recent_activity.forEach(act => {
-            timelineEl.innerHTML += `
-              <div class="timeline-item">
-                <div class="timeline-badge badge-${act.type}">
-                  ${getBadgeIcon(act.type)}
-                </div>
-                <div class="timeline-content">
-                  <div class="timeline-meta">
-                    <span class="timeline-user">${escapeHtml(act.name)}</span>
-                    <span class="timeline-time">${act.time}</span>
-                  </div>
-                  <div class="timeline-message">${escapeHtml(act.message)}</div>
-                </div>
-              </div>
-            `;
-          });
-        } else {
-          timelineEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 40px; font-size: 13px;">No recent activity logged.</div>`;
-        }
-
-        // Compute Dynamic Insights
-        renderInsights(data);
+        renderAnalyticsData(data);
 
         document.body.classList.remove("loading");
+        if (forceRefresh && refreshBtn) resetButton(refreshBtn);
       } catch (err) {
         console.error(err);
         document.body.classList.remove("loading");
+        if (forceRefresh && refreshBtn) resetButton(refreshBtn);
         
+        if (err.status === 401) {
+          handleLogout();
+          return;
+        }
+
         if (err.message && err.message.includes("Failed to fetch")) {
           window.location.href = "/problem.html?reason=analytics_backend_unreachable";
         } else {
@@ -1381,7 +1417,7 @@
     }
 
     function handleFilterChange() {
-      loadAnalytics();
+      loadAnalytics(false);
     }
 
     function toggleQualityStyle(cardId, count, idealMin, warningThreshold) {

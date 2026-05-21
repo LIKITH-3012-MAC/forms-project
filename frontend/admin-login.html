@@ -199,6 +199,7 @@
     }
   </style>
   <link rel="stylesheet" href="/assets/theme.css">
+  <link rel="stylesheet" href="/assets/performance.css">
 </head>
 <body>
   <div class="theme-floating">
@@ -213,21 +214,22 @@
       </div>
       <h1>Administrative Console</h1>
       <p class="subtitle">Access controls for registration management portal</p>
-
+ 
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
           <label for="password">Admin Secret Key</label>
           <input type="password" id="password" required placeholder="••••••••••••••••" />
           <div class="error-msg" id="loginError">Incorrect administrative password credential.</div>
         </div>
-
+ 
         <button type="submit" class="neo-btn neo-btn-primary" id="loginBtn">
           Authenticate &rarr;
         </button>
       </form>
     </div>
   </main>
-
+ 
+  <script src="/assets/theme.js"></script>
   <script>
         const CONFIG = {
       BACKEND_URL:
@@ -236,7 +238,7 @@
           ? "http://localhost:8000"
           : "https://forms-project-qcdc.onrender.com"
     };
-
+ 
     if (
       !window.location.hostname.includes("localhost") &&
       !window.location.hostname.includes("127.0.0.1") &&
@@ -244,44 +246,34 @@
     ) {
       window.location.href = "/problem.html?reason=production_backend_url_misconfigured";
     }
-
-    const BACKEND_URL = CONFIG.BACKEND_URL;
-
+ 
     async function handleLogin(e) {
       e.preventDefault();
       const pwd = document.getElementById("password").value;
       const btn = document.getElementById("loginBtn");
-      const err = document.getElementById("loginError");
-
-      btn.disabled = true;
-      btn.innerText = "Verifying...";
-      err.style.display = "none";
-
+      const errEl = document.getElementById("loginError");
+ 
+      setButtonLoading(btn, "Verifying...");
+      errEl.style.display = "none";
+ 
       try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/login`, {
+        const data = await apiFetch("/api/admin/login", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
           body: JSON.stringify({ admin_password: pwd })
         });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || data.detail || "Authentication failed");
-        }
-
+ 
         // Store session token in local storage
         localStorage.setItem("admin_token", data.admin_token);
         
-        // Redirect to dashboard
-        window.location.href = "admin-dashboard.html";
-      } catch (err) {
-        console.error(err);
-        err.style.display = "block";
-        btn.disabled = false;
-        btn.innerText = "Authenticate →";
+        markButtonSuccess(btn, "Success ✅");
+        setTimeout(() => {
+          window.location.href = "admin-dashboard.html";
+        }, 600);
+      } catch (error) {
+        console.error(error);
+        errEl.innerText = error.message || "Incorrect administrative password credential.";
+        errEl.style.display = "block";
+        markButtonError(btn, "Failed");
       }
     }
 

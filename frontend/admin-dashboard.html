@@ -317,6 +317,7 @@
 
 
   </style>
+  <link rel="stylesheet" href="/assets/performance.css">
 </head>
 <body>
   <header>
@@ -325,7 +326,7 @@
     </div>
     <div class="admin-controls">
       <a href="/admin-analytics.html" class="neo-btn neo-btn-primary">View Graphs 📊</a>
-      <button class="neo-btn neo-btn-secondary" onclick="exportCSV()">Export CSV</button>
+      <button class="neo-btn neo-btn-secondary" id="exportBtn" onclick="exportCSV()">Export CSV</button>
       <button class="neo-btn neo-btn-secondary" onclick="handleLogout()">Logout</button>
     </div>
   </header>
@@ -402,10 +403,21 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Pagination controls -->
+    <div class="pagination-container" id="paginationControls" style="display: none;">
+      <div class="pagination-info" id="paginationInfo">
+        Showing 0 to 0 of 0 entries
+      </div>
+      <div class="pagination-buttons" id="paginationButtons">
+        <!-- Dyn buttons -->
+      </div>
+    </div>
   </main>
 
   <div class="toast-container" id="toastContainer"></div>
 
+  <script src="/assets/theme.js"></script>
   <script>
         const CONFIG = {
       BACKEND_URL:
@@ -449,31 +461,36 @@
       window.location.href = "admin-login.html";
     }
 
-    async function loadData(search = "", status = "") {
+    let currentPage = 1;
+    let pageSize = 25;
+
+    async function loadData(search = "", status = "", page = 1) {
       checkAuth();
+      currentPage = page;
+      const listEl = document.getElementById("registrationsList");
+      listEl.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px;">
+            <div class="spinner" style="margin: 0 auto 10px auto; display: block;"></div>
+            Fetching registrations...
+          </td>
+        </tr>
+      `;
+
       try {
         const queryParams = new URLSearchParams();
         if (search) queryParams.append("search", search);
         if (status) queryParams.append("payment_status", status);
+        queryParams.append("page", page);
+        queryParams.append("page_size", pageSize);
 
-        const response = await fetch(`${BACKEND_URL}/api/admin/registrations?${queryParams}`, {
+        const data = await apiFetchWithRetry(`/api/admin/registrations?${queryParams}`, {
           headers: {
             "Authorization": `Bearer ${adminToken}`,
             "X-Admin-Token": adminToken
           }
         });
 
-        if (response.status === 401) {
-          handleLogout();
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error("Failed to load registration data");
-        }
-
-        const data = await response.json();
-        
         // Update stats
         document.getElementById("statTotal").innerText = data.stats.total;
         document.getElementById("statPending").innerText = data.stats.pending;
@@ -483,7 +500,6 @@
         document.getElementById("statToday").innerText = data.stats.today;
 
         // Render Table
-        const listEl = document.getElementById("registrationsList");
         listEl.innerHTML = "";
 
         if (data.registrations.length === 0) {
@@ -492,6 +508,7 @@
               <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px;">No matching records found.</td>
             </tr>
           `;
+          document.getElementById("paginationControls").style.display = "none";
           return;
         }
 
@@ -509,10 +526,76 @@
             </tr>
           `;
         });
+
+        renderPagination(data.pagination);
       } catch (err) {
         console.error(err);
+        if (err.message && err.message.includes("401")) {
+          handleLogout();
+          return;
+        }
         showToast("Error retrieving registrations database logs", "danger");
       }
+    }
+
+    function renderPagination(pagination) {
+      const controls = document.getElementById("paginationControls");
+      const info = document.getElementById("paginationInfo");
+      const buttonsContainer = document.getElementById("paginationButtons");
+
+      if (!pagination || pagination.total_filtered === 0) {
+        controls.style.display = "none";
+        return;
+      }
+
+      controls.style.display = "flex";
+
+      const start = (pagination.page - 1) * pagination.page_size + 1;
+      const end = Math.min(pagination.page * pagination.page_size, pagination.total_filtered);
+      info.innerText = `Showing ${start} to ${end} of ${pagination.total_filtered} entries`;
+
+      buttonsContainer.innerHTML = "";
+
+      const prevBtn = document.createElement("button");
+      prevBtn.className = "pagination-btn";
+      prevBtn.innerText = "Previous";
+      prevBtn.disabled = pagination.page === 1;
+      prevBtn.onclick = () => {
+        const search = document.getElementById("searchInput").value;
+        const status = document.getElementById("statusFilter").value;
+        loadData(search, status, pagination.page - 1);
+      };
+      buttonsContainer.appendChild(prevBtn);
+
+      const maxPagesToShow = 5;
+      let startPage = Math.max(1, pagination.page - 2);
+      let endPage = Math.min(pagination.total_pages, startPage + maxPagesToShow - 1);
+      if (endPage - startPage < maxPagesToShow - 1) {
+        startPage = Math.max(1, endPage - maxPagesToShow + 1);
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement("button");
+        btn.className = `pagination-btn ${i === pagination.page ? 'active' : ''}`;
+        btn.innerText = i;
+        btn.onclick = () => {
+          const search = document.getElementById("searchInput").value;
+          const status = document.getElementById("statusFilter").value;
+          loadData(search, status, i);
+        };
+        buttonsContainer.appendChild(btn);
+      }
+
+      const nextBtn = document.createElement("button");
+      nextBtn.className = "pagination-btn";
+      nextBtn.innerText = "Next";
+      nextBtn.disabled = pagination.page === pagination.total_pages;
+      nextBtn.onclick = () => {
+        const search = document.getElementById("searchInput").value;
+        const status = document.getElementById("statusFilter").value;
+        loadData(search, status, pagination.page + 1);
+      };
+      buttonsContainer.appendChild(nextBtn);
     }
 
     let filterTimeout = null;
@@ -521,12 +604,18 @@
       filterTimeout = setTimeout(() => {
         const search = document.getElementById("searchInput").value;
         const status = document.getElementById("statusFilter").value;
-        loadData(search, status);
+        loadData(search, status, 1);
       }, 300);
     }
 
+    let isExporting = false;
     async function exportCSV() {
+      if (isExporting) return;
+      isExporting = true;
       checkAuth();
+      const btn = document.getElementById("exportBtn");
+      setButtonLoading(btn, "Exporting...");
+      
       const search = document.getElementById("searchInput").value;
       const status = document.getElementById("statusFilter").value;
       
@@ -559,9 +648,15 @@
         a.remove();
         window.URL.revokeObjectURL(url);
         showToast("CSV file downloaded successfully", "success");
+        markButtonSuccess(btn, "Exported ✅");
       } catch (err) {
         console.error(err);
         showToast("Error exporting CSV data file", "danger");
+        markButtonError(btn, "Failed");
+      } finally {
+        setTimeout(() => {
+          isExporting = false;
+        }, 1500);
       }
     }
 
