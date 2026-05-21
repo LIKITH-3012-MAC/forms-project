@@ -4,6 +4,10 @@ import string
 import datetime
 from typing import Any
 
+def get_ist_time() -> datetime.datetime:
+    """Returns the current time in IST (UTC +5:30)."""
+    return datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
+
 def generate_secure_token() -> str:
     """Generates a secure url-safe token for edit/view/status links."""
     return secrets.token_urlsafe(32)

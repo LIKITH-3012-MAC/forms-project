@@ -1,6 +1,7 @@
 import datetime
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Enum, LargeBinary
 from database import Base
+from utils import get_ist_time
 
 class EventRegistration(Base):
     __tablename__ = "event_registrations"
@@ -44,8 +45,8 @@ class EventRegistration(Base):
     user_agent = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True) # IPv6 can be 45 chars
     
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=get_ist_time)
+    updated_at = Column(DateTime, default=get_ist_time, onupdate=get_ist_time)
     approved_at = Column(DateTime, nullable=True)
     rejected_at = Column(DateTime, nullable=True)
 
@@ -60,7 +61,7 @@ class RegistrationAuditLog(Base):
     new_data = Column(Text, nullable=True) # JSON dump
     performed_by = Column(String(100), nullable=False) # e.g. "user", "admin"
     ip_address = Column(String(45), nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=get_ist_time)
 
 
 class EmailLog(Base):
@@ -74,7 +75,7 @@ class EmailLog(Base):
     resend_message_id = Column(String(100), nullable=True)
     status = Column(String(50), nullable=False) # SENT, FAILED
     error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=get_ist_time)
 
 
 class ProblemLog(Base):
@@ -87,4 +88,4 @@ class ProblemLog(Base):
     user_agent = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True)
     exception_type = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=get_ist_time)

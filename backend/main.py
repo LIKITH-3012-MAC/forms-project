@@ -16,7 +16,7 @@ import schemas
 import security
 import email_service
 from database import engine, get_db, SessionLocal
-from utils import generate_registration_id, generate_secure_token, escape_html
+from utils import generate_registration_id, generate_secure_token, escape_html, get_ist_time
 def frontend_url(path: str) -> str:
     base = config.FRONTEND_URL.rstrip("/")
     clean_path = path.lstrip("/")
@@ -489,7 +489,7 @@ async def get_editable_fields(edit_token: str, db: Session = Depends(get_db)):
     if not reg:
         raise HTTPException(status_code=404, detail="Edit link invalid or not found.")
 
-    if reg.edit_token_expires_at and reg.edit_token_expires_at < datetime.datetime.utcnow():
+    if reg.edit_token_expires_at and reg.edit_token_expires_at < get_ist_time():
         raise HTTPException(status_code=400, detail="This edit token has expired.")
 
     if reg.is_edit_locked and config.LOCK_EDIT_AFTER_APPROVAL:
@@ -635,7 +635,7 @@ async def update_registration(
         reg.payment_screenshot_size = new_size
         
     reg.edit_count += 1
-    reg.last_edited_at = datetime.datetime.utcnow()
+    reg.last_edited_at = get_ist_time()
 
     db.commit()
 
@@ -701,7 +701,7 @@ async def admin_registrations(
     rejected = db.query(models.EventRegistration).filter(models.EventRegistration.payment_status == "REJECTED").count()
     correction = db.query(models.EventRegistration).filter(models.EventRegistration.payment_status == "NEEDS_CORRECTION").count()
     
-    today_start = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = get_ist_time().replace(hour=0, minute=0, second=0, microsecond=0)
     today = db.query(models.EventRegistration).filter(models.EventRegistration.created_at >= today_start).count()
 
     stats = {
@@ -897,7 +897,7 @@ async def admin_approve_payment(
     old_status = reg.payment_status
     reg.payment_status = "APPROVED"
     reg.registration_status = "CONFIRMED"
-    reg.approved_at = datetime.datetime.utcnow()
+    reg.approved_at = get_ist_time()
     reg.is_edit_locked = True
     
     if payload.admin_note is not None:
@@ -940,7 +940,7 @@ async def admin_reject_payment(
     old_status = reg.payment_status
     reg.payment_status = "REJECTED"
     reg.registration_status = "REJECTED"
-    reg.rejected_at = datetime.datetime.utcnow()
+    reg.rejected_at = get_ist_time()
     reg.is_edit_locked = False
     
     if payload.admin_note:
@@ -1158,7 +1158,7 @@ def apply_analytics_filters(query, model, days: Optional[str] = None, payment_st
     if days and days != "all":
         try:
             days_int = int(days)
-            start_date = datetime.datetime.utcnow() - datetime.timedelta(days=days_int)
+            start_date = get_ist_time() - datetime.timedelta(days=days_int)
             query = query.filter(model.created_at >= start_date)
         except ValueError:
             pass
@@ -1195,7 +1195,7 @@ def get_analytics_summary_data(db: Session, days: Optional[str] = None, payment_
     rejected = q.filter(models.EventRegistration.payment_status == "REJECTED").count()
     needs_correction = q.filter(models.EventRegistration.payment_status == "NEEDS_CORRECTION").count()
     
-    today_start = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = get_ist_time().replace(hour=0, minute=0, second=0, microsecond=0)
     today_submissions = q.filter(models.EventRegistration.created_at >= today_start).count()
     
     total_expected_amount = db.query(func.coalesce(func.sum(models.EventRegistration.amount), 0)).filter(
@@ -1375,7 +1375,7 @@ def get_daily_submissions_data(db: Session, days: Optional[str] = None, payment_
         func.count(models.EventRegistration.id).label("count")
     )
     if days and days != "all":
-        start_date = datetime.datetime.utcnow() - datetime.timedelta(days=days_limit)
+        start_date = get_ist_time() - datetime.timedelta(days=days_limit)
         q = q.filter(models.EventRegistration.created_at >= start_date)
 
     if payment_status and payment_status != "all":

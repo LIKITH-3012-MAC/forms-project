@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 import config
 from models import EmailLog
 import datetime
-from utils import escape_html
+from utils import escape_html, get_ist_time
 
 # Set resend API key
 resend.api_key = config.RESEND_API_KEY
@@ -32,7 +32,7 @@ def log_email_result(
             resend_message_id=resend_message_id,
             status=status,
             error_message=error_message,
-            created_at=datetime.datetime.utcnow()
+            created_at=get_ist_time()
         )
         db.add(log)
         db.commit()
