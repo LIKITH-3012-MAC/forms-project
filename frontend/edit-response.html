@@ -8,7 +8,22 @@
   <link rel="alternate icon" href="/assets/favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
   <link rel="manifest" href="/assets/site.webmanifest">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#020617">
+  <script>
+    (function initTheme() {
+      const storedTheme = localStorage.getItem("event-theme");
+      const prefersLight = window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: light)").matches;
+
+      const theme = storedTheme || (prefersLight ? "light" : "dark");
+      document.documentElement.setAttribute("data-theme", theme);
+
+      const metaTheme = document.querySelector("meta[name='theme-color']");
+      if (metaTheme) {
+        metaTheme.setAttribute("content", theme === "light" ? "#f8fafc" : "#020617");
+      }
+    })();
+  </script>
   <meta name="application-name" content="Event Registration">
   <meta name="apple-mobile-web-app-title" content="Event Registration">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -243,8 +258,14 @@
       border: 1px solid rgba(255,255,255,0.14);
     }
   </style>
+  <link rel="stylesheet" href="/assets/theme.css">
 </head>
 <body>
+  <div class="theme-floating">
+    <button id="themeToggle" class="neo-btn neo-btn-icon theme-toggle" aria-label="Toggle theme">
+      <span id="themeIcon">🌙</span>
+    </button>
+  </div>
   <div class="container">
     <h1>Modify Registration Details</h1>
 
@@ -407,12 +428,12 @@
     });
 
     uploadCard.addEventListener("dragleave", () => {
-      uploadCard.style.borderColor = "rgba(255,255,255,0.25)";
+      uploadCard.style.borderColor = "var(--border-strong)";
     });
 
     uploadCard.addEventListener("drop", (e) => {
       e.preventDefault();
-      uploadCard.style.borderColor = "rgba(255,255,255,0.25)";
+      uploadCard.style.borderColor = "var(--border-strong)";
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         handleFileSelect(e.dataTransfer.files[0]);
       }
@@ -605,5 +626,6 @@
 
     window.addEventListener("DOMContentLoaded", loadRegistration);
   </script>
+  <script src="/assets/theme.js"></script>
 </body>
 </html>
