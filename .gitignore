@@ -35,6 +35,10 @@ ml_receipt_model/outputs/
 ml_receipt_model/runs/
 ml_receipt_model/models_private/
 *.pt
-*.onnx
 *.weights
 *.ckpt
+
+# Exclude training ONNX models but keep the deployed production model
+ml_receipt_model/**/*.onnx
+# Allow the production classifier to be committed and deployed
+!backend/models/payment_receipt_classifier.onnx
