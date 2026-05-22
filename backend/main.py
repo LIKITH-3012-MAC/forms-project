@@ -102,6 +102,7 @@ app.add_middleware(
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "https://forms-project-qcdc.onrender.com",
+        "https://forms-project-f3sb.vercel.app",
         config.FRONTEND_URL
     ],
     allow_origin_regex=r"https://.*\.vercel\.app",
@@ -403,10 +404,21 @@ async def register_attendee(
         )
 
         db.add(registration)
-        db.commit()
-        db.refresh(registration)
-
-        print("✅ DB insert success:", reg_id)
+        try:
+            db.commit()
+            db.refresh(registration)
+            print("✅ DB insert success:", reg_id)
+        except Exception as db_error:
+            db.rollback()
+            print("❌ Registration DB insert failed:", repr(db_error))
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "success": False,
+                    "message": "Unable to save registration. Please try again.",
+                    "code": "DB_INSERT_FAILED"
+                }
+            )
 
         # Audit log
         audit_data = {

@@ -669,7 +669,7 @@
       </div>
       <div class="btn-row">
         <button type="button" class="neo-btn neo-btn-secondary" onclick="closeReviewModal()">Edit</button>
-        <button type="button" class="neo-btn neo-btn-primary" id="confirmSubmitBtn" onclick="submitRegistration()">Confirm & Submit &rarr;</button>
+        <button type="button" class="neo-btn neo-btn-primary" id="finalSubmitBtn" onclick="submitRegistration()">Confirm & Submit &rarr;</button>
       </div>
     </div>
   </div>
@@ -1027,49 +1027,84 @@
         .replace(/'/g, "&#039;");
     }
 
-    let isSubmitting = false;
+    let submissionInProgress = false;
 
     // Submit payload to FastAPI using FormData
     async function submitRegistration() {
-      if (isSubmitting) return;
-      isSubmitting = true;
-
-      const btn = document.getElementById("confirmSubmitBtn");
-      setButtonLoading(btn, "Submitting...");
-
-      const formData = new FormData();
-      formData.append("full_name", document.getElementById("full_name").value.trim());
-      formData.append("email", document.getElementById("email").value.trim());
-      formData.append("phone", document.getElementById("phone").value.trim());
-      formData.append("college", document.getElementById("college").value.trim());
-      formData.append("department", document.getElementById("department").value.trim());
-      formData.append("year", document.getElementById("year").value);
-      formData.append("roll_number", document.getElementById("roll_number").value.trim() || "");
-      formData.append("upi_reference_id", document.getElementById("upi_reference_id").value.trim());
-      formData.append("agreement", document.getElementById("agreement").checked);
-      formData.append("payment_screenshot", selectedFile);
+      if (submissionInProgress) return;
+      
+      const submitBtn = document.getElementById("finalSubmitBtn");
 
       try {
-        const data = await apiFetch("/api/register", {
+        submissionInProgress = true;
+        setButtonLoading(submitBtn, "Submitting securely...");
+
+        const screenshotFile =
+          selectedFile ||
+          document.getElementById("payment_screenshot")?.files?.[0];
+
+        if (!screenshotFile) {
+          throw new Error("Please upload your payment screenshot before submitting.");
+        }
+
+        const payload = new FormData();
+        payload.append("full_name", document.getElementById("full_name").value.trim());
+        payload.append("email", document.getElementById("email").value.trim());
+        payload.append("phone", document.getElementById("phone").value.trim());
+        payload.append("college", document.getElementById("college").value.trim());
+        payload.append("department", document.getElementById("department").value.trim());
+        payload.append("year", document.getElementById("year").value);
+        payload.append("roll_number", document.getElementById("roll_number").value.trim() || "");
+        payload.append("upi_reference_id", document.getElementById("upi_reference_id").value.trim());
+        payload.append("agreement", document.getElementById("agreement").checked ? "true" : "false");
+        payload.append("payment_screenshot", screenshotFile);
+
+        const response = await fetch(`${CONFIG.BACKEND_URL}/api/register`, {
           method: "POST",
-          body: formData
+          body: payload
         });
+
+        let data;
+        try {
+          data = await response.json();
+        } catch {
+          throw new Error(`Unable to connect to the secure registration server. Please try again. (${response.status})`);
+        }
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || data.detail || "Submission failed.");
+        }
 
         // Clear local storage draft
         localStorage.removeItem("event_form_draft");
 
-        markButtonSuccess(btn, "Done ✅");
+        showToast("Your response has been securely submitted.", "success");
+        markButtonSuccess(submitBtn, "Submitted ✓");
+
+        if (!data.redirect_url) {
+          throw new Error("Submission saved, but redirect URL was not returned.");
+        }
+
         setTimeout(() => {
           window.location.href = data.redirect_url;
         }, 800);
-      } catch (err) {
-        console.error(err);
-        showToast(err.message, "danger");
-        markButtonError(btn, "Failed");
+
+      } catch (error) {
+        console.error("Registration submission error:", error);
+        showToast(
+          error.message || "Submission failed. Please try again.",
+          "danger"
+        );
+        markButtonError(submitBtn, "Failed");
         closeReviewModal();
       } finally {
+        submissionInProgress = false;
+
+        // If redirect has not happened, ensure button never remains stuck.
         setTimeout(() => {
-          isSubmitting = false;
+          if (document.body.contains(submitBtn)) {
+            resetButton(submitBtn);
+          }
         }, 1200);
       }
     }
