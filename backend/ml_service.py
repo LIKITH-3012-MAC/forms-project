@@ -48,7 +48,6 @@ def predict_receipt_similarity(file_bytes: bytes) -> dict:
             "model_version": MODEL_VERSION
         }
         
-    # 2. Check if AI model is available
     session = _get_session()
     if session is None:
         return {
@@ -56,10 +55,10 @@ def predict_receipt_similarity(file_bytes: bytes) -> dict:
             "match_percentage": None,
             "label": "not_checked",
             "provider": None,
-            "confidence_message": "AI preview unavailable right now.",
+            "confidence_message": "Receipt recognition model is not trained or unavailable. You may continue submission. Final payment verification is completed manually.",
             "model_version": MODEL_VERSION
         }
-        
+
     # 3. Preprocess for YOLO classification
     try:
         # Re-open the image for processing since .verify() closes or exhausts it sometimes
@@ -75,8 +74,9 @@ def predict_receipt_similarity(file_bytes: bytes) -> dict:
         input_name = session.get_inputs()[0].name
         outputs = session.run(None, {input_name: img_data})
         
-        logits = outputs[0][0]
-        probs = softmax(logits)
+        # YOLO classification ONNX exports include the Softmax activation,
+        # so the output values are already probabilities summing to 1.0.
+        probs = outputs[0][0]
         
         # Assume binary: class 0 is non_receipt, class 1 is payment_receipt
         # If YOLO exports alphabetically, non_receipt is 0, payment_receipt is 1.
