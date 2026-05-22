@@ -8,3 +8,6 @@ email-validator
 resend
 python-multipart
 itsdangerous
+onnxruntime
+Pillow
+numpy

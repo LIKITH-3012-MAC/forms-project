@@ -640,6 +640,42 @@
               </div>
             </div>
           </div>
+          
+          <section id="aiReceiptPanel" class="ai-receipt-panel" hidden>
+            <div class="ai-header">
+              <div class="ai-title-wrap">
+                <span class="ai-icon">✦</span>
+                <div>
+                  <p class="ai-eyebrow">Visual AI Assistance</p>
+                  <h4>Payment Receipt Similarity</h4>
+                </div>
+              </div>
+              <span id="aiReceiptBadge" class="ai-badge">Analyzing</span>
+            </div>
+
+            <div class="ai-score-layout">
+              <div id="aiScoreRing" class="ai-score-ring">
+                <strong id="aiScoreValue">--</strong>
+                <span>%</span>
+              </div>
+
+              <div class="ai-result-copy">
+                <h5 id="aiResultTitle">Analyzing screenshot...</h5>
+                <p id="aiResultMessage">
+                  Checking whether this image resembles a payment receipt.
+                </p>
+              </div>
+            </div>
+
+            <div class="ai-progress-track">
+              <div id="aiProgressFill" class="ai-progress-fill analyzing"></div>
+            </div>
+
+            <p class="ai-disclaimer">
+              AI score is visual assistance only. Final registration confirmation is completed after manual verification by the organizer.
+            </p>
+          </section>
+
           <div class="error-msg" id="screenshot-error">Payment screenshot is required (JPG, PNG, or WEBP, max 3MB).</div>
         </div>
 
@@ -762,6 +798,7 @@
       fileInput.value = "";
       uploadPreview.style.display = "none";
       uploadPlaceholder.style.display = "block";
+      hideAiReceiptPanel();
     });
 
     function formatBytes(bytes) {
@@ -794,8 +831,118 @@
         paymentPreviewImg.src = e.target.result;
         uploadPlaceholder.style.display = "none";
         uploadPreview.style.display = "block";
+        
+        // Trigger AI analysis without blocking
+        analyzeReceiptScreenshot(file);
       };
       reader.readAsDataURL(file);
+    }
+    
+    // AI Receipt Logic
+    let latestAiRequestId = 0;
+    
+    function showAiAnalyzingState() {
+      const panel = document.getElementById("aiReceiptPanel");
+      panel.hidden = false;
+      panel.className = "ai-receipt-panel";
+      
+      document.getElementById("aiReceiptBadge").innerText = "Analyzing";
+      document.getElementById("aiScoreValue").innerText = "--";
+      document.getElementById("aiScoreRing").style.setProperty("--score-angle", "0deg");
+      
+      document.getElementById("aiResultTitle").innerText = "Analyzing screenshot...";
+      document.getElementById("aiResultMessage").innerText = "Checking whether this image resembles a payment receipt.";
+      
+      const fill = document.getElementById("aiProgressFill");
+      fill.className = "ai-progress-fill analyzing";
+    }
+    
+    function hideAiReceiptPanel() {
+      latestAiRequestId++;
+      document.getElementById("aiReceiptPanel").hidden = true;
+    }
+    
+    function showAiUnavailableState() {
+      const panel = document.getElementById("aiReceiptPanel");
+      panel.className = "ai-receipt-panel";
+      document.getElementById("aiReceiptBadge").innerText = "Unavailable";
+      document.getElementById("aiScoreValue").innerText = "--";
+      document.getElementById("aiResultTitle").innerText = "AI Receipt Check Unavailable";
+      document.getElementById("aiResultMessage").innerText = "Automatic image assistance is unavailable right now. You may continue submission; the organizer will verify manually.";
+      document.getElementById("aiProgressFill").className = "ai-progress-fill";
+      document.getElementById("aiProgressFill").style.width = "0%";
+    }
+    
+    function renderAiReceiptScore(aiResult) {
+      const panel = document.getElementById("aiReceiptPanel");
+      const score = aiResult.match_percentage;
+      
+      let stateClass = "state-low";
+      if (score >= 75) stateClass = "state-high";
+      else if (score >= 40) stateClass = "state-medium";
+      
+      panel.className = `ai-receipt-panel ${stateClass}`;
+      
+      document.getElementById("aiReceiptBadge").innerText = "Analysis Complete";
+      
+      // Animate score count
+      let currentVal = 0;
+      const targetVal = Math.round(score);
+      const scoreRing = document.getElementById("aiScoreRing");
+      const scoreValue = document.getElementById("aiScoreValue");
+      
+      const interval = setInterval(() => {
+        if (currentVal >= targetVal) {
+          clearInterval(interval);
+          scoreValue.innerText = targetVal;
+          scoreRing.style.setProperty("--score-angle", `${(targetVal / 100) * 360}deg`);
+        } else {
+          currentVal += Math.ceil((targetVal - currentVal) / 10) || 1;
+          scoreValue.innerText = currentVal;
+          scoreRing.style.setProperty("--score-angle", `${(currentVal / 100) * 360}deg`);
+        }
+      }, 30);
+      
+      document.getElementById("aiResultTitle").innerText = aiResult.label === "payment_receipt" ? "Receipt-like image detected" : "Please verify clarity";
+      document.getElementById("aiResultMessage").innerText = aiResult.confidence_message;
+      
+      const fill = document.getElementById("aiProgressFill");
+      fill.className = "ai-progress-fill";
+      fill.style.width = `${targetVal}%`;
+    }
+    
+    async function analyzeReceiptScreenshot(file) {
+      if (!file) return;
+
+      const requestId = ++latestAiRequestId;
+      showAiAnalyzingState();
+
+      const aiFormData = new FormData();
+      aiFormData.append("payment_screenshot", file);
+
+      try {
+        const response = await fetch(`${CONFIG.BACKEND_URL}/api/receipt-ai/check`, {
+          method: "POST",
+          body: aiFormData
+        });
+
+        const data = await response.json();
+
+        if (requestId !== latestAiRequestId) return;
+
+        if (!response.ok || !data.success || !data.ai_check || !data.ai_check.available) {
+          showAiUnavailableState();
+          return;
+        }
+
+        renderAiReceiptScore(data.ai_check);
+
+      } catch (error) {
+        console.error("AI receipt check failed:", error);
+        if (requestId === latestAiRequestId) {
+          showAiUnavailableState();
+        }
+      }
     }
 
     // LocalStorage draft auto-save

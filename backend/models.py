@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Enum, LargeBinary
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Enum, LargeBinary, Float
 from sqlalchemy.orm import deferred
 from database import Base
 from utils import get_ist_time
@@ -45,6 +45,12 @@ class EventRegistration(Base):
     
     user_agent = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True) # IPv6 can be 45 chars
+    
+    ai_receipt_match_score = Column(Float, nullable=True)
+    ai_receipt_label = Column(String(100), nullable=True)
+    ai_receipt_provider = Column(String(100), nullable=True)
+    ai_receipt_model_version = Column(String(100), nullable=True)
+    ai_receipt_checked_at = Column(DateTime, nullable=True)
     
     created_at = Column(DateTime, default=get_ist_time, index=True)
     updated_at = Column(DateTime, default=get_ist_time, onupdate=get_ist_time)

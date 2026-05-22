@@ -15,6 +15,7 @@ import models
 import schemas
 import security
 import email_service
+import ml_service
 from database import engine, get_db, SessionLocal
 from utils import generate_registration_id, generate_secure_token, escape_html, get_ist_time
 
@@ -86,6 +87,26 @@ try:
         if "payment_screenshot_size" not in existing_cols:
             conn.execute(text("ALTER TABLE event_registrations ADD COLUMN payment_screenshot_size INT"))
             print("✓ Migration: Added payment_screenshot_size to event_registrations.")
+            
+        if "ai_receipt_match_score" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN ai_receipt_match_score FLOAT"))
+            print("✓ Migration: Added ai_receipt_match_score to event_registrations.")
+            
+        if "ai_receipt_label" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN ai_receipt_label VARCHAR(100)"))
+            print("✓ Migration: Added ai_receipt_label to event_registrations.")
+            
+        if "ai_receipt_provider" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN ai_receipt_provider VARCHAR(100)"))
+            print("✓ Migration: Added ai_receipt_provider to event_registrations.")
+            
+        if "ai_receipt_model_version" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN ai_receipt_model_version VARCHAR(100)"))
+            print("✓ Migration: Added ai_receipt_model_version to event_registrations.")
+            
+        if "ai_receipt_checked_at" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN ai_receipt_checked_at DATETIME"))
+            print("✓ Migration: Added ai_receipt_checked_at to event_registrations.")
             
         conn.commit()
 except Exception as e:
@@ -267,6 +288,41 @@ async def check_utr(utr: str, db: Session = Depends(get_db)):
         return {"available": False, "message": "UTR Reference ID is already taken"}
     return {"available": True, "message": "UTR Reference ID is unique"}
 
+@app.post("/api/receipt-ai/check")
+async def check_receipt_ai(payment_screenshot: UploadFile = File(...)):
+    """Live AI check for payment screenshot similarity without submitting registration."""
+    try:
+        contents = await payment_screenshot.read()
+        file_size = len(contents)
+        
+        if file_size == 0 or file_size > 3 * 1024 * 1024:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Invalid file size."})
+            
+        allowed_types = ["image/jpeg", "image/png", "image/webp"]
+        if payment_screenshot.content_type not in allowed_types:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Invalid file type."})
+            
+        # Run inference
+        ai_result = ml_service.predict_receipt_similarity(contents)
+        
+        return {
+            "success": True,
+            "ai_check": ai_result
+        }
+    except Exception as e:
+        print("AI Check Error:", e)
+        return {
+            "success": True, # Keep true to not break frontend
+            "ai_check": {
+                "available": False,
+                "match_percentage": None,
+                "label": "error",
+                "provider": None,
+                "confidence_message": "AI preview unavailable right now.",
+                "model_version": ml_service.MODEL_VERSION
+            }
+        }
+
 @app.post("/api/register")
 async def register_attendee(
     background_tasks: BackgroundTasks,
@@ -364,6 +420,13 @@ async def register_attendee(
         max_size = 3 * 1024 * 1024
         if file_size > max_size:
             return JSONResponse(status_code=400, content={"success": False, "message": "Screenshot size must be below 3MB."})
+            
+        # Run AI inference on final submitted file
+        try:
+            ai_result = ml_service.predict_receipt_similarity(contents)
+        except Exception as e:
+            print("AI inference failed during submission:", e)
+            ai_result = {"available": False}
 
         # Generate metadata
         reg_id = generate_registration_id()
@@ -400,7 +463,12 @@ async def register_attendee(
             view_token=generate_secure_token(),
             status_token=generate_secure_token(),
             user_agent=user_agent,
-            ip_address=client_ip
+            ip_address=client_ip,
+            ai_receipt_match_score=ai_result.get("match_percentage"),
+            ai_receipt_label=ai_result.get("label"),
+            ai_receipt_provider=ai_result.get("provider"),
+            ai_receipt_model_version=ai_result.get("model_version"),
+            ai_receipt_checked_at=get_ist_time() if ai_result.get("available") else None
         )
 
         db.add(registration)
@@ -922,6 +990,7 @@ async def admin_registration_detail(
             "is_edit_locked": reg.is_edit_locked,
             "edit_count": reg.edit_count,
             "admin_note": reg.admin_note,
+            "ai_receipt_match_score": reg.ai_receipt_match_score,
             "created_at": reg.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "approved_at": reg.approved_at.strftime("%Y-%m-%d %H:%M:%S") if reg.approved_at else None,
             "rejected_at": reg.rejected_at.strftime("%Y-%m-%d %H:%M:%S") if reg.rejected_at else None,

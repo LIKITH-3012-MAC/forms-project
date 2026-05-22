@@ -26,3 +26,14 @@ Thumbs.db
 # Environment files
 .env
 .env.*
+
+# AI Receipt Model Exclusions
+ml_receipt_model/dataset_private/
+ml_receipt_model/dataset_downloads/
+ml_receipt_model/processed_dataset/
+ml_receipt_model/outputs/
+ml_receipt_model/models_private/
+*.pt
+*.onnx
+*.weights
+*.ckpt

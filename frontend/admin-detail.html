@@ -396,6 +396,10 @@
           <span class="field-label">Proof Screenshot</span>
           <span class="field-val"><a id="screenshotLink" href="#" target="_blank" style="color: var(--primary);">View Screenshot File &nearr;</a></span>
         </div>
+        <div class="field-row">
+          <span class="field-label">AI Receipt Similarity</span>
+          <span class="field-val" id="aiSimilarityScore">-</span>
+        </div>
       </div>
 
       <div class="card">
@@ -540,6 +544,22 @@
         document.getElementById("utr").innerText = reg.upi_reference_id;
         document.getElementById("regStatus").innerText = reg.registration_status;
         document.getElementById("adminActionNote").value = reg.admin_note || "";
+        
+        if (reg.ai_receipt_match_score !== null && reg.ai_receipt_match_score !== undefined) {
+          const aiScore = reg.ai_receipt_match_score;
+          let labelText = "Uncertain similarity";
+          let color = "var(--warning)";
+          if (aiScore >= 75) {
+            labelText = "Strong receipt-like match";
+            color = "var(--success)";
+          } else if (aiScore < 40) {
+            labelText = "Low receipt similarity; verify manually";
+            color = "var(--danger)";
+          }
+          document.getElementById("aiSimilarityScore").innerHTML = `<span style="color: ${color}; font-weight: 600;">${aiScore}%</span> — <span style="font-size: 0.9em; color: var(--muted);">${labelText}</span>`;
+        } else {
+          document.getElementById("aiSimilarityScore").innerHTML = `<span style="color: var(--muted); font-size: 0.9em;">Not available</span>`;
+        }
 
         const payBadge = document.getElementById("payStatus");
         payBadge.className = `badge badge-${reg.payment_status}`;

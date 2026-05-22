@@ -1,0 +1,13 @@
+ultralytics>=8.0.0
+torch>=2.0.0
+torchvision>=0.15.0
+tensorflow>=2.10.0
+scikit-learn
+matplotlib
+pandas
+onnx>=1.14.0
+onnxruntime>=1.15.0
+Pillow>=9.0.0
+numpy<2.0.0
+datasets>=2.14.0
+opencv-python>=4.8.0
