@@ -4,7 +4,8 @@ import numpy as np
 from PIL import Image, UnidentifiedImageError
 try:
     import onnxruntime as ort
-except ImportError:
+except ImportError as e:
+    print(f"Failed to import onnxruntime: {e}")
     ort = None
 
 MODEL_VERSION = "receipt-cls-v1"
