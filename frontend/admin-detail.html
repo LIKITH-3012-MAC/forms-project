@@ -418,8 +418,8 @@
       <div class="card" style="position: sticky; top: 100px;">
         <div class="section-title">Review Actions Overrides</div>
         
-        <label for="adminNote">Action Message / Reason Note</label>
-        <textarea id="adminNote" placeholder="Write feedback note sent to registrant or internal approval remarks..."></textarea>
+        <label for="adminActionNote">Action Message / Reason Note</label>
+        <textarea id="adminActionNote" name="admin_note" placeholder="Write feedback note sent to registrant or internal approval remarks..."></textarea>
 
         <div class="action-row">
           <div class="btn-row">
@@ -493,6 +493,11 @@
       window.location.href = "admin-login.html";
     }
 
+    function getAdminActionNote() {
+      const textarea = document.getElementById("adminActionNote");
+      return textarea ? textarea.value.trim() : "";
+    }
+
     async function loadDetail() {
       checkAuth();
       const urlParams = new URLSearchParams(window.location.search);
@@ -534,7 +539,7 @@
         document.getElementById("amount").innerText = `₹${reg.amount}`;
         document.getElementById("utr").innerText = reg.upi_reference_id;
         document.getElementById("regStatus").innerText = reg.registration_status;
-        document.getElementById("adminNote").value = reg.admin_note || "";
+        document.getElementById("adminActionNote").value = reg.admin_note || "";
 
         const payBadge = document.getElementById("payStatus");
         payBadge.className = `badge badge-${reg.payment_status}`;
@@ -611,7 +616,7 @@
 
     async function executeAction(action) {
       checkAuth();
-      const note = document.getElementById("adminNote").value;
+      const note = getAdminActionNote();
       const btn = document.getElementById(action === 'approve' ? 'btnApprove' : action === 'reject' ? 'btnReject' : 'btnCorrection');
 
       setButtonLoading(btn, "Executing...");
@@ -677,6 +682,7 @@
 
     async function resendEmail() {
       checkAuth();
+      const note = getAdminActionNote();
       const btn = document.getElementById("btnResend");
       setButtonLoading(btn, "Sending...");
 
@@ -686,7 +692,8 @@
           headers: {
             "Authorization": `Bearer ${adminToken}`,
             "X-Admin-Token": adminToken
-          }
+          },
+          body: JSON.stringify({ admin_note: note })
         });
 
         showToast(data.message || "Email notification queued", "success");

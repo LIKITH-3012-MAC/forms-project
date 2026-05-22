@@ -53,7 +53,93 @@ def assert_safe_frontend_url():
                 f"⚠️ WARNING: FRONTEND_URL is localhost/127.0.0.1/file:// in production. FRONTEND_URL={config.FRONTEND_URL}"
             )
 
-def render_email_body(registration, title: str, description: str, status_text: str, badge_color: str) -> str:
+def organizer_message_block(admin_note: str, message_type: str = "info") -> str:
+    note = (admin_note or "").strip()
+
+    if not note:
+        return ""
+
+    safe_note = escape_html(note).replace("\n", "<br>")
+
+    if message_type == "approved":
+        title = "Message from the Organizer"
+        accent = "#16a34a"
+        icon = "✓"
+        soft_bg = "#ecfdf5"
+        border = "#bbf7d0"
+    elif message_type == "rejected":
+        title = "Action Required from Organizer"
+        accent = "#dc2626"
+        icon = "!"
+        soft_bg = "#fef2f2"
+        border = "#fecaca"
+    elif message_type == "correction":
+        title = "Correction Requested by Organizer"
+        accent = "#d97706"
+        icon = "!"
+        soft_bg = "#fffbeb"
+        border = "#fde68a"
+    else:
+        title = "Message from the Organizer"
+        accent = "#0284c7"
+        icon = "i"
+        soft_bg = "#f0f9ff"
+        border = "#bae6fd"
+
+    return f"""
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:24px 0;">
+      <tr>
+        <td style="
+          padding:20px;
+          border-radius:18px;
+          background:{soft_bg};
+          border:1px solid {border};
+          border-left:5px solid {accent};
+        ">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="width:42px;vertical-align:top;">
+                <div style="
+                  width:34px;
+                  height:34px;
+                  line-height:34px;
+                  text-align:center;
+                  border-radius:50%;
+                  background:{accent};
+                  color:#ffffff;
+                  font-size:18px;
+                  font-weight:800;
+                ">{icon}</div>
+              </td>
+
+              <td style="vertical-align:top;padding-left:10px;">
+                <p style="
+                  margin:0 0 8px;
+                  color:{accent};
+                  font-family:Arial,sans-serif;
+                  font-size:12px;
+                  font-weight:800;
+                  letter-spacing:0.10em;
+                  text-transform:uppercase;
+                ">{title}</p>
+
+                <p style="
+                  margin:0;
+                  color:#0f172a;
+                  font-family:Arial,sans-serif;
+                  font-size:15px;
+                  font-weight:500;
+                  line-height:1.7;
+                ">{safe_note}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    """
+
+def render_email_body(registration, title: str, description: str, status_text: str, badge_color: str, message_type: str = "info") -> str:
     """Renders the HTML body of the email with premium styles and action buttons."""
     
     # Escape user values for security
@@ -90,14 +176,7 @@ def render_email_body(registration, title: str, description: str, status_text: s
         """
 
     # Admin note display
-    admin_note_section = ""
-    if registration.admin_note:
-        admin_note_section = f"""
-        <div style="margin: 20px 0; padding: 15px; background-color: #2a1b1b; border: 1px solid #ef4444; border-radius: 8px; text-align: left;">
-            <p style="margin: 0 0 5px 0; font-size: 12px; color: #ef4444; text-transform: uppercase; font-weight: bold; letter-spacing: 0.05em;">Admin Message:</p>
-            <p style="margin: 0; color: #f87171; font-size: 14px; line-height: 1.5;">{escape_html(registration.admin_note)}</p>
-        </div>
-        """
+    admin_note_section = organizer_message_block(registration.admin_note, message_type)
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -264,7 +343,8 @@ def send_submission_received_email(registration, db: Session):
         title=title,
         description=description,
         status_text="Pending Review",
-        badge_color="#f59e0b" # Orange/Amber
+        badge_color="#f59e0b", # Orange/Amber
+        message_type="info"
     )
     return _send_email_api_call(db, registration, "submission", subject, html_body)
 
@@ -281,7 +361,7 @@ def send_details_updated_email(registration, db: Session):
         status_text = registration.payment_status.replace("_", " ")
         color = "#ef4444" if "REJECT" in registration.payment_status else ("#22c55e" if "APPROV" in registration.payment_status else "#3b82f6")
 
-    html_body = render_email_body(registration, title=title, description=desc, status_text=status_text, badge_color=color)
+    html_body = render_email_body(registration, title=title, description=desc, status_text=status_text, badge_color=color, message_type="info")
     return _send_email_api_call(db, registration, "updated", subject, html_body)
 
 def send_payment_approved_email(registration, db: Session):
@@ -293,7 +373,8 @@ def send_payment_approved_email(registration, db: Session):
         title=title,
         description=description,
         status_text="Confirmed / Approved",
-        badge_color="#22c55e" # Green
+        badge_color="#22c55e", # Green
+        message_type="approved"
     )
     return _send_email_api_call(db, registration, "approved", subject, html_body)
 
@@ -306,7 +387,8 @@ def send_payment_rejected_email(registration, db: Session):
         title=title,
         description=description,
         status_text="Rejected",
-        badge_color="#ef4444" # Red
+        badge_color="#ef4444", # Red
+        message_type="rejected"
     )
     return _send_email_api_call(db, registration, "rejected", subject, html_body)
 
@@ -319,7 +401,8 @@ def send_needs_correction_email(registration, db: Session):
         title=title,
         description=description,
         status_text="Needs Correction",
-        badge_color="#3b82f6" # Blue
+        badge_color="#3b82f6", # Blue
+        message_type="correction"
     )
     return _send_email_api_call(db, registration, "correction", subject, html_body)
 

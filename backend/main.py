@@ -958,13 +958,16 @@ async def admin_approve_payment(
         }
 
     old_status = reg.payment_status
+    note = (payload.admin_note or "").strip()
+
     reg.payment_status = "APPROVED"
     reg.registration_status = "CONFIRMED"
+    reg.admin_note = note
     reg.approved_at = get_ist_time()
     reg.is_edit_locked = True
-    
-    if payload.admin_note is not None:
-        reg.admin_note = payload.admin_note.strip()
+
+    db.commit()
+    db.refresh(reg)
 
     client_ip = get_client_ip(request)
     audit = models.RegistrationAuditLog(
@@ -984,6 +987,7 @@ async def admin_approve_payment(
     return {
         "success": True,
         "message": "Payment verified and registration confirmed successfully",
+        "admin_note": reg.admin_note,
         "payment_status": "APPROVED",
         "registration_status": "CONFIRMED"
     }
@@ -1006,13 +1010,16 @@ async def admin_reject_payment(
         raise HTTPException(status_code=404, detail="Registration record not found.")
 
     old_status = reg.payment_status
+    note = (payload.admin_note or "").strip()
+
     reg.payment_status = "REJECTED"
     reg.registration_status = "REJECTED"
+    reg.admin_note = note
     reg.rejected_at = get_ist_time()
     reg.is_edit_locked = False
-    
-    if payload.admin_note:
-        reg.admin_note = payload.admin_note.strip()
+
+    db.commit()
+    db.refresh(reg)
 
     client_ip = get_client_ip(request)
     audit = models.RegistrationAuditLog(
@@ -1032,6 +1039,7 @@ async def admin_reject_payment(
     return {
         "success": True,
         "message": "Registration rejected successfully",
+        "admin_note": reg.admin_note,
         "payment_status": "REJECTED",
         "registration_status": "REJECTED"
     }
@@ -1054,11 +1062,14 @@ async def admin_mark_correction(
         raise HTTPException(status_code=404, detail="Registration record not found.")
 
     old_status = reg.payment_status
+    note = (payload.admin_note or "").strip()
+
     reg.payment_status = "NEEDS_CORRECTION"
+    reg.admin_note = note
     reg.is_edit_locked = False
-    
-    if payload.admin_note:
-        reg.admin_note = payload.admin_note.strip()
+
+    db.commit()
+    db.refresh(reg)
 
     client_ip = get_client_ip(request)
     audit = models.RegistrationAuditLog(
@@ -1078,6 +1089,7 @@ async def admin_mark_correction(
     return {
         "success": True,
         "message": "Registration marked as needing correction",
+        "admin_note": reg.admin_note,
         "payment_status": "NEEDS_CORRECTION",
         "registration_status": reg.registration_status
     }
@@ -1145,6 +1157,7 @@ async def admin_unlock_edit(
 @app.post("/api/admin/resend-email/{registration_id}")
 async def admin_resend_email(
     registration_id: str,
+    payload: schemas.AdminAction,
     request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
@@ -1158,22 +1171,30 @@ async def admin_resend_email(
     if not reg:
         raise HTTPException(status_code=404, detail="Registration record not found.")
 
+    new_note = (payload.admin_note or "").strip()
+    if new_note:
+        reg.admin_note = new_note
+        db.commit()
+        db.refresh(reg)
+
     client_ip = get_client_ip(request)
     audit = models.RegistrationAuditLog(
         registration_id=registration_id,
         action="RESEND_EMAIL",
-        new_data="Queued status email resend in background",
+        new_data=json.dumps({"message": "Queued status email resend in background", "admin_note_used": reg.admin_note or ""}),
         performed_by="admin",
         ip_address=client_ip
     )
     db.add(audit)
-    
-    reg.email_status = "NOT_SENT"
     db.commit()
 
     background_tasks.add_task(send_email_background, reg.id, "resend_email")
 
-    return {"success": True, "message": "Status email notification queued successfully"}
+    return {
+        "success": True,
+        "message": "Status email queued successfully",
+        "admin_note": reg.admin_note or ""
+    }
 
 @app.get("/api/admin/export.csv")
 async def admin_export_csv(

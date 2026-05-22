@@ -87,7 +87,7 @@ class RegistrationUpdate(BaseModel):
 
 
 class AdminAction(BaseModel):
-    admin_note: Optional[str] = None
+    admin_note: Optional[str] = Field(default="", max_length=2000)
 
 
 class AdminLogin(BaseModel):
