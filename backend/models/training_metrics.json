@@ -7,7 +7,7 @@
   "precision_not_receipt": 0.9230769230769231,
   "recall_not_receipt": 1.0,
   "f1_not_receipt": 0.96,
-  "brier_score": 0.06493138570919729,
+  "brier_score": 0.06509164157081163,
   "roc_auc": 0.9166666666666666,
   "pr_auc": 0.5,
   "false_positive_rate": 0.0,

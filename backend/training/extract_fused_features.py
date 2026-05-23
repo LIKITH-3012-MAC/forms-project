@@ -2,7 +2,7 @@ import os
 import json
 import numpy as np
 from pathlib import Path
-import tensorflow as tf
+import onnxruntime as ort
 from PIL import Image
 import cv2
 
@@ -16,7 +16,7 @@ def compute_brightness(img_array):
     gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
     return float(np.mean(gray))
 
-def extract_features_for_split(model, split_dir, class_name, label):
+def extract_features_for_split(session, input_name, output_name, split_dir, class_name, label):
     """Extract feature embeddings + quality features for all images in a class folder."""
     class_dir = Path(split_dir) / class_name
     files = sorted([f for f in class_dir.iterdir() if f.suffix.lower() in ('.jpg', '.jpeg', '.png', '.webp')])
@@ -31,16 +31,17 @@ def extract_features_for_split(model, split_dir, class_name, label):
             img_resized = img.resize((224, 224), Image.BILINEAR)
             img_array = np.array(img_resized, dtype=np.float32)
             
-            # Preprocess for EfficientNet
+            # Batch dimension first: shape (1, 224, 224, 3)
             img_batch = np.expand_dims(img_array, axis=0)
-            img_batch = tf.keras.applications.efficientnet.preprocess_input(img_batch)
             
-            # Extract visual embedding (1280-dim from GlobalAveragePooling)
-            visual_embedding = model.predict(img_batch, verbose=0).flatten()
+            # Extract visual embedding (1280-dim from GlobalAveragePooling layer)
+            outputs = session.run([output_name], {input_name: img_batch})
+            visual_embedding = outputs[0].flatten()
             
-            # Quality features
-            blur_score = compute_blur_score(np.array(img_resized))
-            brightness = compute_brightness(np.array(img_resized))
+            # Quality features (computed on original image size to match production image_validator.py)
+            img_orig_array = np.array(img)
+            blur_score = compute_blur_score(img_orig_array)
+            brightness = compute_brightness(img_orig_array)
             orig_w, orig_h = img.size
             aspect_ratio = orig_w / max(orig_h, 1)
             
@@ -61,35 +62,17 @@ def main():
     models_dir = base_dir / "backend/models"
     dataset_dir = base_dir / "dataset"
     
-    # Load the trained feature extractor
-    extractor_path = models_dir / "receipt_feature_extractor.keras"
-    if not extractor_path.exists():
-        print(f"Error: Feature extractor not found at {extractor_path}")
-        print("Run train_visual_extractor.py first.")
+    # Load the trained feature extractor ONNX session
+    onnx_path = models_dir / "receipt_feature_extractor.onnx"
+    if not onnx_path.exists():
+        print(f"Error: ONNX Feature extractor not found at {onnx_path}")
         return
         
-    print(f"Loading feature extractor from {extractor_path}...")
-    full_model = tf.keras.models.load_model(
-        str(extractor_path),
-        custom_objects={'preprocess_input': tf.keras.applications.efficientnet.preprocess_input}
-    )
-    
-    # Build a sub-model that outputs at the feature_output layer (before dropout/classifier)
-    feature_layer = None
-    for layer in full_model.layers:
-        if layer.name == "feature_output":
-            feature_layer = layer
-            break
-    
-    if feature_layer is None:
-        # Fallback: use the layer before dropout
-        # The GlobalAveragePooling2D layer should be the 4th-to-last layer
-        feature_layer = full_model.layers[-3]
-        print(f"  Using fallback feature layer: {feature_layer.name}")
-    else:
-        print(f"  Using feature layer: {feature_layer.name}")
-    
-    feature_model = tf.keras.Model(inputs=full_model.input, outputs=feature_layer.output)
+    print(f"Loading ONNX feature extractor from {onnx_path}...")
+    session = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
+    input_name = session.get_inputs()[0].name
+    output_name = session.get_outputs()[0].name
+    print(f"  Input name: {input_name}, Output name: {output_name}")
     
     # Extract features for each split
     for split_name in ["train", "val", "test"]:
@@ -107,7 +90,7 @@ def main():
         # Class 0 = not_receipt, Class 1 = receipt
         for class_name, label in [("not_receipt", 0), ("receipt", 1)]:
             features, labels, filenames = extract_features_for_split(
-                feature_model, split_dir, class_name, label
+                session, input_name, output_name, split_dir, class_name, label
             )
             all_features.extend(features)
             all_labels.extend(labels)

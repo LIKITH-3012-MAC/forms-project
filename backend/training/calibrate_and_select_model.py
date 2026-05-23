@@ -60,14 +60,7 @@ def main():
     # Load the best raw model
     best_model = joblib.load(str(models_dir / f"candidate_{best_name}.pkl"))
     
-    # Calibrate probabilities using CalibratedClassifierCV
-    print("\nCalibrating probabilities...")
-    try:
-        from sklearn.frozen import FrozenEstimator
-        frozen_model = FrozenEstimator(best_model)
-        calibrated = CalibratedClassifierCV(frozen_model, method="sigmoid")
-    except ImportError:
-        calibrated = CalibratedClassifierCV(best_model, cv="prefit", method="sigmoid")
+    calibrated = CalibratedClassifierCV(best_model, cv="prefit", method="sigmoid")
         
     calibrated.fit(X_val_scaled, y_val)
     

@@ -209,6 +209,13 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
         prediction = "receipt"
         allow_submission = True
         message = "This appears to be a payment receipt. OCR could not fully confirm transaction details. Manual verification recommended."
+    elif ocr_confirms:
+        # OCR confirms success, app, and amount, but visual score is low (e.g. new receipt format).
+        # We allow submission but flag it as uncertain (Review Needed) for manual verification.
+        status = "uncertain"
+        prediction = "uncertain"
+        allow_submission = True
+        message = "Receipt layout not fully recognized, but transaction details verified. Manual verification recommended."
     elif receipt_prob >= THRESHOLD_UNCERTAIN_LOW:
         status = "uncertain"
         prediction = "uncertain"
