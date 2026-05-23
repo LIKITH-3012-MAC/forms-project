@@ -15,7 +15,9 @@ from app.image_validator import validate_image
 from app.ocr_analyzer import analyze_receipt_text, get_ocr_reader
 
 # Global model references (loaded once at startup)
-_feature_model = None
+_feature_session = None
+_feature_input_name = None
+_feature_output_name = None
 _classifier = None
 _scaler = None
 _models_loaded = False
@@ -23,35 +25,23 @@ _models_loaded = False
 
 def load_models():
     """Load all ML models at application startup."""
-    global _feature_model, _classifier, _scaler, _models_loaded
+    global _feature_session, _feature_input_name, _feature_output_name, _classifier, _scaler, _models_loaded
 
     if _models_loaded:
         return True
 
     try:
-        import tensorflow as tf
+        import onnxruntime as ort
         import joblib
 
-        # Load feature extractor
+        # Load feature extractor ONNX session
         if not FEATURE_EXTRACTOR_PATH.exists():
             print(f"⚠️ Feature extractor not found at {FEATURE_EXTRACTOR_PATH}")
             return False
 
-        full_model = tf.keras.models.load_model(
-            str(FEATURE_EXTRACTOR_PATH),
-            custom_objects={'preprocess_input': tf.keras.applications.efficientnet.preprocess_input}
-        )
-
-        # Find the feature output layer
-        feature_layer = None
-        for layer in full_model.layers:
-            if layer.name == "feature_output":
-                feature_layer = layer
-                break
-        if feature_layer is None:
-            feature_layer = full_model.layers[-3]
-
-        _feature_model = tf.keras.Model(inputs=full_model.input, outputs=feature_layer.output)
+        _feature_session = ort.InferenceSession(str(FEATURE_EXTRACTOR_PATH), providers=["CPUExecutionProvider"])
+        _feature_input_name = _feature_session.get_inputs()[0].name
+        _feature_output_name = _feature_session.get_outputs()[0].name
         print(f"✓ Feature extractor loaded from {FEATURE_EXTRACTOR_PATH}")
 
         # Load sklearn classifier
@@ -84,7 +74,7 @@ def load_models():
 def get_model_status() -> dict:
     """Return status of loaded models."""
     return {
-        "visual_model_loaded": _feature_model is not None,
+        "visual_model_loaded": _feature_session is not None,
         "classifier_loaded": _classifier is not None,
         "scaler_loaded": _scaler is not None,
         "ocr_loaded": get_ocr_reader() not in (None, "unavailable"),
@@ -96,8 +86,6 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
     Full multi-stage receipt prediction pipeline.
     Returns structured prediction result.
     """
-    import tensorflow as tf
-
     # Stage A: Image Quality Gate
     quality = validate_image(file_bytes, content_type)
 
@@ -153,10 +141,12 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
         img_resized = img.resize((224, 224), Image.BILINEAR)
         img_array = np.array(img_resized, dtype=np.float32)
 
+        # Batch dimension first: shape (1, 224, 224, 3)
         img_batch = np.expand_dims(img_array, axis=0)
-        img_batch = tf.keras.applications.efficientnet.preprocess_input(img_batch)
 
-        visual_embedding = _feature_model.predict(img_batch, verbose=0).flatten()
+        # Run ONNX inference
+        outputs = _feature_session.run([_feature_output_name], {_feature_input_name: img_batch})
+        visual_embedding = outputs[0].flatten()
 
         # Quality features
         blur_score = quality["blur_score"]

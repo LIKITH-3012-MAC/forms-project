@@ -15,5 +15,3 @@ scikit-learn
 joblib
 imagehash
 easyocr
-tensorflow
-albumentations

@@ -9,7 +9,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent.parent
 MODELS_DIR = BASE_DIR / "models"
 
-FEATURE_EXTRACTOR_PATH = MODELS_DIR / "receipt_feature_extractor.keras"
+FEATURE_EXTRACTOR_PATH = MODELS_DIR / "receipt_feature_extractor.onnx"
 CLASSIFIER_PATH = MODELS_DIR / "receipt_classifier.pkl"
 SCALER_PATH = MODELS_DIR / "feature_scaler.pkl"
 MODEL_CONFIG_PATH = MODELS_DIR / "model_config.json"

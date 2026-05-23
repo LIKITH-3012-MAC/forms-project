@@ -45,6 +45,7 @@ ml_receipt_model/**/*.onnx
 
 # Multi-Stage pipeline exclusions
 dataset/
+backend/models/*.keras
 backend/models/features/
 backend/models/candidate_*.pkl
 backend/models/false_*.json
