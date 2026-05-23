@@ -756,6 +756,7 @@
 
     // File upload logic
     let selectedFile = null;
+    let aiAllowSubmission = true;
 
     const fileInput = document.getElementById("payment_screenshot");
     const uploadCard = document.getElementById("uploadCard");
@@ -860,6 +861,7 @@
     function hideAiReceiptPanel() {
       latestAiRequestId++;
       document.getElementById("aiReceiptPanel").hidden = true;
+      aiAllowSubmission = true;
     }
     
     function showAiUnavailableState() {
@@ -871,19 +873,32 @@
       document.getElementById("aiResultMessage").innerText = "Automatic image assistance is unavailable right now. You may continue submission; the organizer will verify manually.";
       document.getElementById("aiProgressFill").className = "ai-progress-fill";
       document.getElementById("aiProgressFill").style.width = "0%";
+      aiAllowSubmission = true;
     }
     
     function renderAiReceiptScore(aiResult) {
       const panel = document.getElementById("aiReceiptPanel");
-      const score = aiResult.match_percentage;
+      const score = aiResult.receipt_probability;
+      const status = aiResult.status;
+      const message = aiResult.message;
       
       let stateClass = "state-low";
-      if (score >= 75) stateClass = "state-high";
-      else if (score >= 40) stateClass = "state-medium";
+      let badgeText = "Rejected";
+      
+      if (status === "likely_receipt") {
+        stateClass = "state-high";
+        badgeText = "Verified";
+      } else if (status === "uncertain") {
+        stateClass = "state-medium";
+        badgeText = "Review Needed";
+      } else {
+        stateClass = "state-low";
+        badgeText = "Rejected";
+      }
       
       panel.className = `ai-receipt-panel ${stateClass}`;
       
-      document.getElementById("aiReceiptBadge").innerText = "Analysis Complete";
+      document.getElementById("aiReceiptBadge").innerText = badgeText;
       
       // Animate score count
       let currentVal = 0;
@@ -903,8 +918,8 @@
         }
       }, 30);
       
-      document.getElementById("aiResultTitle").innerText = aiResult.label === "payment_receipt" ? "Receipt-like image detected" : "Please verify clarity";
-      document.getElementById("aiResultMessage").innerText = aiResult.confidence_message;
+      document.getElementById("aiResultTitle").innerText = status === "likely_receipt" ? "Receipt Verified" : (status === "uncertain" ? "Verify Transaction Details" : "Invalid Payment Receipt");
+      document.getElementById("aiResultMessage").innerText = message;
       
       const fill = document.getElementById("aiProgressFill");
       fill.className = "ai-progress-fill";
@@ -918,10 +933,10 @@
       showAiAnalyzingState();
 
       const aiFormData = new FormData();
-      aiFormData.append("payment_screenshot", file);
+      aiFormData.append("file", file);
 
       try {
-        const response = await fetch(`${CONFIG.BACKEND_URL}/api/receipt-ai/check`, {
+        const response = await fetch(`${CONFIG.BACKEND_URL}/api/receipt/predict`, {
           method: "POST",
           body: aiFormData
         });
@@ -930,12 +945,13 @@
 
         if (requestId !== latestAiRequestId) return;
 
-        if (!response.ok || !data.success || !data.ai_check || !data.ai_check.available) {
+        if (!response.ok || !data.success) {
           showAiUnavailableState();
           return;
         }
 
-        renderAiReceiptScore(data.ai_check);
+        aiAllowSubmission = data.allow_submission;
+        renderAiReceiptScore(data);
 
       } catch (error) {
         console.error("AI receipt check failed:", error);
@@ -1121,6 +1137,11 @@
         valid = false;
       }
 
+      if (valid && !aiAllowSubmission) {
+        showToast("Submission blocked: Uploaded image is not recognized as a valid payment receipt screenshot.", "danger");
+        valid = false;
+      }
+ 
       if (!valid) return;
 
       const listContainer = document.getElementById("reviewList");

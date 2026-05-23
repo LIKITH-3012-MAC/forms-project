@@ -11,3 +11,9 @@ itsdangerous
 onnxruntime
 Pillow
 numpy
+scikit-learn
+joblib
+imagehash
+easyocr
+tensorflow
+albumentations

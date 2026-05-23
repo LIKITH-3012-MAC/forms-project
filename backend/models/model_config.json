@@ -1,0 +1,23 @@
+{
+  "model_name": "LogisticRegression",
+  "calibration": "sigmoid",
+  "feature_dim": 1285,
+  "visual_embedding_dim": 1280,
+  "quality_features": [
+    "blur_score",
+    "brightness",
+    "aspect_ratio",
+    "width",
+    "height"
+  ],
+  "classes": [
+    "not_receipt",
+    "receipt"
+  ],
+  "thresholds": {
+    "likely_receipt": 0.92,
+    "uncertain_low": 0.7,
+    "not_receipt": 0.7
+  },
+  "warning": "Current accuracy is not reliable for production because the positive class is built from only five unique receipt images."
+}

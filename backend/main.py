@@ -114,6 +114,16 @@ except Exception as e:
 
 app = FastAPI(title=config.APP_NAME)
 
+@app.on_event("startup")
+def startup_event():
+    from app.predictor import load_models
+    print("Initializing receipt recognition models...")
+    success = load_models()
+    if success:
+        print("✓ Models initialized successfully.")
+    else:
+        print("⚠️ Models failed to initialize on startup.")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -288,22 +298,45 @@ async def check_utr(utr: str, db: Session = Depends(get_db)):
         return {"available": False, "message": "UTR Reference ID is already taken"}
     return {"available": True, "message": "UTR Reference ID is unique"}
 
+def run_legacy_compatibility(predict_result: dict) -> dict:
+    if not predict_result.get("success"):
+        return {
+            "available": False,
+            "match_percentage": None,
+            "label": "error",
+            "provider": None,
+            "confidence_message": predict_result.get("message", "AI preview unavailable."),
+            "model_version": "multi-stage-v1"
+        }
+    
+    pred = predict_result.get("prediction")
+    if pred == "receipt":
+        label = "payment_receipt"
+    elif pred == "uncertain":
+        label = "uncertain"
+    else:
+        label = "non_receipt"
+        
+    return {
+        "available": True,
+        "match_percentage": predict_result.get("receipt_probability", 0.0),
+        "label": label,
+        "provider": "efficientnet_sklearn_fusion",
+        "confidence_message": predict_result.get("message", ""),
+        "model_version": "multi-stage-v1"
+    }
+
 @app.post("/api/receipt-ai/check")
 async def check_receipt_ai(payment_screenshot: UploadFile = File(...)):
     """Live AI check for payment screenshot similarity without submitting registration."""
     try:
         contents = await payment_screenshot.read()
-        file_size = len(contents)
         
-        if file_size == 0 or file_size > 3 * 1024 * 1024:
-            return JSONResponse(status_code=400, content={"success": False, "message": "Invalid file size."})
-            
-        allowed_types = ["image/jpeg", "image/png", "image/webp"]
-        if payment_screenshot.content_type not in allowed_types:
-            return JSONResponse(status_code=400, content={"success": False, "message": "Invalid file type."})
-            
-        # Run inference
-        ai_result = ml_service.predict_receipt_similarity(contents)
+        from app.predictor import predict_receipt
+        predict_result = predict_receipt(
+            contents, payment_screenshot.content_type, payment_screenshot.filename
+        )
+        ai_result = run_legacy_compatibility(predict_result)
         
         return {
             "success": True,
@@ -319,8 +352,32 @@ async def check_receipt_ai(payment_screenshot: UploadFile = File(...)):
                 "label": "error",
                 "provider": None,
                 "confidence_message": "AI preview unavailable right now.",
-                "model_version": ml_service.MODEL_VERSION
+                "model_version": "multi-stage-v1"
             }
+        }
+
+@app.post("/api/receipt/predict")
+async def predict_receipt_endpoint(file: UploadFile = File(...)):
+    """Robust multi-stage receipt validation endpoint for modern frontend integration."""
+    try:
+        contents = await file.read()
+        from app.predictor import predict_receipt
+        result = predict_receipt(contents, file.content_type, file.filename)
+        return result
+    except Exception as e:
+        print("Predict Receipt Endpoint Error:", e)
+        return {
+            "success": False,
+            "filename": file.filename,
+            "prediction": "error",
+            "status": "server_error",
+            "allow_submission": False,
+            "receipt_probability": 0.0,
+            "not_receipt_probability": 100.0,
+            "quality": None,
+            "ocr_signals": None,
+            "threshold": 92.0,
+            "message": f"Server error: {str(e)}",
         }
 
 @app.post("/api/register")
@@ -423,7 +480,20 @@ async def register_attendee(
             
         # Run AI inference on final submitted file
         try:
-            ai_result = ml_service.predict_receipt_similarity(contents)
+            from app.predictor import predict_receipt
+            predict_result = predict_receipt(contents, content_type, filename)
+            
+            # Backend rejection of non-receipts & suspicious failed screenshots
+            if predict_result.get("prediction") == "not_receipt" or predict_result.get("status") == "suspicious_or_not_successful":
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "message": predict_result.get("message", "This image does not appear to be a valid successful payment receipt.")
+                    }
+                )
+                
+            ai_result = run_legacy_compatibility(predict_result)
         except Exception as e:
             print("AI inference failed during submission:", e)
             ai_result = {"available": False}

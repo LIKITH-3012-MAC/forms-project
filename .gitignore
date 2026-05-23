@@ -42,3 +42,12 @@ ml_receipt_model/models_private/
 ml_receipt_model/**/*.onnx
 # Allow the production classifier to be committed and deployed
 !backend/models/payment_receipt_classifier.onnx
+
+# Multi-Stage pipeline exclusions
+dataset/
+backend/models/features/
+backend/models/candidate_*.pkl
+backend/models/false_*.json
+backend/models/confusion_matrix.png
+backend/models/roc_curve.png
+backend/models/calibration_curve.png

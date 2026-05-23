@@ -1,0 +1,21 @@
+{
+  "accuracy": 0.9230769230769231,
+  "balanced_accuracy": 0.5,
+  "precision_receipt": 0.0,
+  "recall_receipt": 0.0,
+  "f1_receipt": 0.0,
+  "precision_not_receipt": 0.9230769230769231,
+  "recall_not_receipt": 1.0,
+  "f1_not_receipt": 0.96,
+  "brier_score": 0.06493138570919729,
+  "roc_auc": 0.9166666666666666,
+  "pr_auc": 0.5,
+  "false_positive_rate": 0.0,
+  "false_negative_rate": 1.0,
+  "confusion_matrix": {
+    "TP": 0,
+    "TN": 12,
+    "FP": 0,
+    "FN": 1
+  }
+}
