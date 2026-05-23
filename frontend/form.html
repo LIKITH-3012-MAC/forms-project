@@ -945,7 +945,7 @@
 
         if (requestId !== latestAiRequestId) return;
 
-        if (!response.ok || !data.success) {
+        if (!response.ok || !data.success || data.status === "model_unavailable") {
           showAiUnavailableState();
           return;
         }

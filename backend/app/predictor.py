@@ -126,7 +126,7 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
             "filename": filename,
             "prediction": "not_checked",
             "status": "model_unavailable",
-            "allow_submission": False,
+            "allow_submission": True,
             "receipt_probability": 0.0,
             "not_receipt_probability": 0.0,
             "quality": quality,

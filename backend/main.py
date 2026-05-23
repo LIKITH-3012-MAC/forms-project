@@ -15,7 +15,6 @@ import models
 import schemas
 import security
 import email_service
-import ml_service
 from database import engine, get_db, SessionLocal
 from utils import generate_registration_id, generate_secure_token, escape_html, get_ist_time
 
