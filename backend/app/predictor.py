@@ -4,9 +4,9 @@ Loads the trained .keras feature extractor and .pkl calibrated classifier.
 Combines visual embeddings, quality features, and OCR signals for final prediction.
 """
 import io
+import threading
 import numpy as np
 from PIL import Image
-import cv2
 from app.settings import (
     FEATURE_EXTRACTOR_PATH, CLASSIFIER_PATH, SCALER_PATH,
     THRESHOLD_LIKELY_RECEIPT, THRESHOLD_UNCERTAIN_LOW
@@ -21,15 +21,18 @@ _feature_output_name = None
 _classifier = None
 _scaler = None
 _models_loaded = False
+_models_loading = False
 _load_error = None
 
 
 def load_models():
     """Load all ML models at application startup."""
-    global _feature_session, _feature_input_name, _feature_output_name, _classifier, _scaler, _models_loaded, _load_error
+    global _feature_session, _feature_input_name, _feature_output_name, _classifier, _scaler, _models_loaded, _models_loading, _load_error
 
     if _models_loaded:
         return True
+
+    _models_loading = True
 
     try:
         import onnxruntime as ort
@@ -38,9 +41,19 @@ def load_models():
         # Load feature extractor ONNX session
         if not FEATURE_EXTRACTOR_PATH.exists():
             print(f"⚠️ Feature extractor not found at {FEATURE_EXTRACTOR_PATH}")
+            _models_loading = False
             return False
 
-        _feature_session = ort.InferenceSession(str(FEATURE_EXTRACTOR_PATH), providers=["CPUExecutionProvider"])
+        sess_options = ort.SessionOptions()
+        sess_options.inter_op_num_threads = 1
+        sess_options.intra_op_num_threads = 1
+        sess_options.enable_mem_pattern = False
+
+        _feature_session = ort.InferenceSession(
+            str(FEATURE_EXTRACTOR_PATH),
+            sess_options=sess_options,
+            providers=["CPUExecutionProvider"]
+        )
         _feature_input_name = _feature_session.get_inputs()[0].name
         _feature_output_name = _feature_session.get_outputs()[0].name
         print(f"✓ Feature extractor loaded from {FEATURE_EXTRACTOR_PATH}")
@@ -48,6 +61,7 @@ def load_models():
         # Load sklearn classifier
         if not CLASSIFIER_PATH.exists():
             print(f"⚠️ Classifier not found at {CLASSIFIER_PATH}")
+            _models_loading = False
             return False
 
         _classifier = joblib.load(str(CLASSIFIER_PATH))
@@ -56,6 +70,7 @@ def load_models():
         # Load scaler
         if not SCALER_PATH.exists():
             print(f"⚠️ Scaler not found at {SCALER_PATH}")
+            _models_loading = False
             return False
 
         _scaler = joblib.load(str(SCALER_PATH))
@@ -65,13 +80,23 @@ def load_models():
         get_ocr_reader()
 
         _models_loaded = True
+        _models_loading = False
+        print("✓ All models loaded successfully.")
         return True
 
     except Exception as e:
         import traceback
         _load_error = f"{str(e)}\n{traceback.format_exc()}"
+        _models_loading = False
         print(f"❌ Model loading failed: {_load_error}")
         return False
+
+
+def load_models_background():
+    """Load models in a background thread so server can bind to port immediately."""
+    thread = threading.Thread(target=load_models, daemon=True)
+    thread.start()
+    print("⏳ Model loading started in background thread...")
 
 
 def get_model_status() -> dict:

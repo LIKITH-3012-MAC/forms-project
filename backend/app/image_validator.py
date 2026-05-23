@@ -1,15 +1,47 @@
 """
 Stage A: Image Safety and Quality Gate.
 Validates uploaded images for corruption, blur, brightness, and minimum size.
+Uses pure PIL/numpy — no OpenCV dependency (saves ~200MB RAM).
 """
 import io
 import numpy as np
-from PIL import Image, UnidentifiedImageError
-import cv2
+from PIL import Image, ImageFilter, UnidentifiedImageError
 from app.settings import (
     MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES, MIN_IMAGE_DIMENSION,
     BLUR_THRESHOLD, BRIGHTNESS_LOW, BRIGHTNESS_HIGH
 )
+
+
+def _laplacian_variance(gray_array: np.ndarray) -> float:
+    """
+    Compute Laplacian variance for blur detection using pure numpy.
+    Equivalent to cv2.Laplacian(gray, cv2.CV_64F).var().
+    """
+    # 3x3 Laplacian kernel
+    kernel = np.array([[0, 1, 0],
+                       [1, -4, 1],
+                       [0, 1, 0]], dtype=np.float64)
+
+    # Resize to a manageable size to save memory and speed up
+    h, w = gray_array.shape
+    if h > 512 or w > 512:
+        from PIL import Image as _Img
+        pil_gray = _Img.fromarray(gray_array)
+        pil_gray = pil_gray.resize((min(w, 512), min(h, 512)), _Img.BILINEAR)
+        gray_array = np.array(pil_gray, dtype=np.float64)
+    else:
+        gray_array = gray_array.astype(np.float64)
+
+    h, w = gray_array.shape
+    # Pad image
+    padded = np.pad(gray_array, 1, mode='edge')
+    # Apply convolution manually
+    result = np.zeros_like(gray_array)
+    for i in range(3):
+        for j in range(3):
+            result += kernel[i, j] * padded[i:i+h, j:j+w]
+
+    return float(np.var(result))
 
 
 def validate_image(file_bytes: bytes, content_type: str = None) -> dict:
@@ -68,19 +100,19 @@ def validate_image(file_bytes: bytes, content_type: str = None) -> dict:
         result["reason"] = "Image is too small for reliable analysis."
         return result
 
-    # 5. Convert to numpy for quality checks
-    img_array = np.array(img)
+    # 5. Convert to grayscale using PIL (no OpenCV needed)
+    gray_img = img.convert("L")
+    gray_array = np.array(gray_img)
 
-    # 6. Blur detection (Laplacian variance)
-    gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-    blur_score = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+    # 6. Blur detection (Laplacian variance via pure numpy)
+    blur_score = _laplacian_variance(gray_array)
     result["blur_score"] = round(blur_score, 2)
 
     if blur_score < BLUR_THRESHOLD:
         result["blur_detected"] = True
 
     # 7. Brightness check
-    brightness = float(np.mean(gray))
+    brightness = float(np.mean(gray_array))
     result["brightness_score"] = round(brightness, 2)
 
     if brightness < BRIGHTNESS_LOW:

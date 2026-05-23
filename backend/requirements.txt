@@ -13,5 +13,4 @@ Pillow
 numpy
 scikit-learn
 joblib
-imagehash
 pytesseract

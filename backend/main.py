@@ -115,13 +115,10 @@ app = FastAPI(title=config.APP_NAME)
 
 @app.on_event("startup")
 def startup_event():
-    from app.predictor import load_models
-    print("Initializing receipt recognition models...")
-    success = load_models()
-    if success:
-        print("✓ Models initialized successfully.")
-    else:
-        print("⚠️ Models failed to initialize on startup.")
+    from app.predictor import load_models_background
+    print("Initializing receipt recognition models in background...")
+    load_models_background()
+    print("✓ Server started. Models loading in background.")
 
 app.add_middleware(
     CORSMiddleware,
