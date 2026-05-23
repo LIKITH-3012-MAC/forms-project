@@ -1,0 +1,16 @@
+- [/] Create directory structure receipt_validator/ with subfolders (dataset, models, reports, uploads)
+- [x] Implement prepare_dataset.py
+- [x] Implement augment_receipts.py
+- [x] Implement train_model.py
+- [ ] Implement evaluate_model.py
+- [ ] Implement ocr_validator.py (using EasyOCR)
+- [ ] Implement predict_receipt.py (combined logic)
+- [ ] Implement FastAPI app.py with endpoints
+- [ ] Write requirements.txt
+- [ ] Write README.md with documentation
+- [ ] Add placeholder seed receipt images handling (copy 5 seeds)
+- [ ] Add instructions for manual addition of not_receipt images
+- [ ] Verify dataset generation and training workflow
+- [ ] Test prediction script
+- [ ] Test FastAPI service
+- [ ] Create walkthrough.md artifact after completion

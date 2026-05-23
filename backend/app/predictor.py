@@ -222,6 +222,8 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
     )
 
     # Decision logic
+    receipt_pct = receipt_prob * 100  # convert to percentage for readability
+
     if has_failure:
         status = "suspicious_or_not_successful"
         prediction = "receipt_like_but_not_successful"
@@ -240,12 +242,31 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
         message = "This appears to be a payment receipt. OCR could not fully confirm transaction details. Manual verification recommended."
     elif ocr_confirms:
         # OCR confirms success, app, and amount, but visual score is low (e.g. new receipt format).
-        # We allow submission but flag it as uncertain (Review Needed) for manual verification.
+        # We allow submission but flag it as uncertain for manual verification.
+        status = "likely_receipt"
+        prediction = "receipt"
+        allow_submission = True
+        message = "Receipt layout not fully recognized, but transaction details verified. Manual verification recommended."
+    elif receipt_pct >= 75:
+        # 75%+ visual confidence without OCR — still confident enough
+        status = "likely_receipt"
+        prediction = "receipt"
+        allow_submission = True
+        message = "Your screenshot seems original and accurate. Manual verification will confirm the transaction."
+    elif receipt_pct >= 60:
+        # 60-75% — confident it's original
+        status = "likely_receipt"
+        prediction = "receipt"
+        allow_submission = True
+        message = "Your screenshot seems original and accurate. Manual verification will confirm the transaction."
+    elif receipt_pct >= 50:
+        # 50-60% — borderline, seems 50-50 but still allow submission
         status = "uncertain"
         prediction = "uncertain"
         allow_submission = True
-        message = "Receipt layout not fully recognized, but transaction details verified. Manual verification recommended."
-    elif receipt_prob >= THRESHOLD_UNCERTAIN_LOW:
+        message = "Your receipt seems 50-50 — we'll verify it manually. You can proceed with submission."
+    elif receipt_pct >= THRESHOLD_UNCERTAIN_LOW * 100:
+        # Between uncertain_low (default 70% but effectively 40-50% range now) and 50%
         status = "uncertain"
         prediction = "uncertain"
         allow_submission = False
