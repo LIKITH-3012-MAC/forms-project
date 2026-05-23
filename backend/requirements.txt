@@ -14,4 +14,4 @@ numpy
 scikit-learn
 joblib
 imagehash
-easyocr
+pytesseract

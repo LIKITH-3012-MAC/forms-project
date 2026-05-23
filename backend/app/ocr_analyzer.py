@@ -13,24 +13,22 @@ from app.settings import (
     OCR_FAILURE_KEYWORDS, DATE_PATTERN, AMOUNT_PATTERN
 )
 
-# Global OCR reader (initialized once)
-_ocr_reader = None
+# Tesseract availability check
+_tesseract_available = None
 
 def get_ocr_reader():
-    """Initialize EasyOCR reader once globally."""
-    global _ocr_reader
-    if _ocr_reader is None:
+    """Verify if Tesseract OCR is available."""
+    global _tesseract_available
+    if _tesseract_available is None:
         try:
-            import easyocr
-            _ocr_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
-            print("✓ EasyOCR reader initialized.")
-        except ImportError:
-            print("⚠️ EasyOCR not available. OCR analysis will be skipped.")
-            _ocr_reader = "unavailable"
+            import pytesseract
+            pytesseract.get_tesseract_version()
+            _tesseract_available = "pytesseract"
+            print("✓ PyTesseract reader initialized.")
         except Exception as e:
-            print(f"⚠️ EasyOCR initialization failed: {e}")
-            _ocr_reader = "unavailable"
-    return _ocr_reader
+            print(f"⚠️ PyTesseract not available: {e}")
+            _tesseract_available = "unavailable"
+    return _tesseract_available
 
 
 def analyze_receipt_text(file_bytes: bytes) -> dict:
@@ -59,12 +57,11 @@ def analyze_receipt_text(file_bytes: bytes) -> dict:
         return result
 
     try:
+        import pytesseract
         img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
-        img_array = np.array(img)
 
         # Run OCR
-        ocr_results = reader.readtext(img_array, detail=0)
-        full_text = " ".join(ocr_results).lower()
+        full_text = pytesseract.image_to_string(img).lower()
         result["ocr_available"] = True
         result["ocr_text"] = full_text[:500]  # Limit stored text
 
