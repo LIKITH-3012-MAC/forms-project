@@ -262,6 +262,12 @@ async def health_check():
         "message": "Backend running"
     }
 
+@app.get("/api/receipt/status")
+async def receipt_status_check():
+    """Diagnostic status check for loaded ML models."""
+    from app.predictor import get_model_status
+    return get_model_status()
+
 @app.get("/api/form-config")
 async def get_form_config(db: Session = Depends(get_db)):
     """Return registration parameters and live seat info as JSON."""

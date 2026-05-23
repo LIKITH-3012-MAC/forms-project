@@ -21,11 +21,12 @@ _feature_output_name = None
 _classifier = None
 _scaler = None
 _models_loaded = False
+_load_error = None
 
 
 def load_models():
     """Load all ML models at application startup."""
-    global _feature_session, _feature_input_name, _feature_output_name, _classifier, _scaler, _models_loaded
+    global _feature_session, _feature_input_name, _feature_output_name, _classifier, _scaler, _models_loaded, _load_error
 
     if _models_loaded:
         return True
@@ -67,7 +68,9 @@ def load_models():
         return True
 
     except Exception as e:
-        print(f"❌ Model loading failed: {e}")
+        import traceback
+        _load_error = f"{str(e)}\n{traceback.format_exc()}"
+        print(f"❌ Model loading failed: {_load_error}")
         return False
 
 
@@ -78,6 +81,7 @@ def get_model_status() -> dict:
         "classifier_loaded": _classifier is not None,
         "scaler_loaded": _scaler is not None,
         "ocr_loaded": get_ocr_reader() not in (None, "unavailable"),
+        "load_error": _load_error,
     }
 
 
