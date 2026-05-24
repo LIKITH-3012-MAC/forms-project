@@ -1,0 +1,37 @@
+[
+  {
+    "file": "Screenshot_2026-05-24-11-57-17-51_49b96b5fbae0d12a18edc4a3afe0dfd9.jpg",
+    "expected": "receipt",
+    "predicted": "not_receipt",
+    "receipt_probability": 25.22,
+    "pass": false
+  },
+  {
+    "file": "Screenshot_2026-05-24-11-57-26-68_49b96b5fbae0d12a18edc4a3afe0dfd9.jpg",
+    "expected": "receipt",
+    "predicted": "not_receipt",
+    "receipt_probability": 26.79,
+    "pass": false
+  },
+  {
+    "file": "Screenshot_2026-05-24-11-58-15-67_49b96b5fbae0d12a18edc4a3afe0dfd9.jpg",
+    "expected": "receipt",
+    "predicted": "not_receipt",
+    "receipt_probability": 40.21,
+    "pass": false
+  },
+  {
+    "file": "Screenshot_2026-05-24-11-58-21-22_49b96b5fbae0d12a18edc4a3afe0dfd9.jpg",
+    "expected": "receipt",
+    "predicted": "not_receipt",
+    "receipt_probability": 38.59,
+    "pass": false
+  },
+  {
+    "file": "Screenshot_2026-05-24-11-58-27-12_49b96b5fbae0d12a18edc4a3afe0dfd9.jpg",
+    "expected": "receipt",
+    "predicted": "not_receipt",
+    "receipt_probability": 24.22,
+    "pass": false
+  }
+]

@@ -123,13 +123,15 @@ def validate_image(file_bytes: bytes, content_type: str = None) -> dict:
         result["reason"] = "Image is extremely overexposed."
 
     # 8. Overall acceptability
+    # Only block if BOTH blur AND brightness are bad. Either alone is a warning, not a block.
+    # Payment screenshots often have very bright/white backgrounds — don't block on brightness alone.
     if result["blur_detected"] and result["brightness_issue"]:
         result["acceptable"] = False
         result["reason"] = "Image quality is too poor for reliable receipt analysis."
     elif result["blur_detected"]:
         result["acceptable"] = True  # Blurry but not blocking
     elif result["brightness_issue"]:
-        result["acceptable"] = False
+        result["acceptable"] = True  # Bright/dark but let ML model decide
     else:
         result["acceptable"] = True
         result["reason"] = None

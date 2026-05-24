@@ -1,54 +1,38 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Database files
-*.db
-*.sqlite
-
-# OS files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Environment files
+# Secrets / environment files
 .env
 .env.*
+!.env.example
 
-# AI Receipt Model Exclusions
-ml_receipt_model/dataset_private/
-ml_receipt_model/dataset_downloads/
-ml_receipt_model/processed_dataset/
-ml_receipt_model/outputs/
-ml_receipt_model/runs/
-ml_receipt_model/models_private/
-*.pt
-*.weights
-*.ckpt
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
 
-# Exclude training ONNX models but keep the deployed production model
-ml_receipt_model/**/*.onnx
-# Allow the production classifier to be committed and deployed
-!backend/models/payment_receipt_classifier.onnx
+# macOS
+.DS_Store
 
-# Multi-Stage pipeline exclusions
+# Private uploaded/training images and datasets
+photos/
 dataset/
-backend/models/*.keras
-backend/models/features/
-backend/models/candidate_*.pkl
-backend/models/false_*.json
-backend/models/confusion_matrix.png
-backend/models/roc_curve.png
-backend/models/calibration_curve.png
+ml_receipt_model/private_raw/
+ml_receipt_model/private_dataset/
+ml_receipt_model/prepared_dataset*/
+ml_receipt_model/raw_public/
+ml_receipt_model/outputs/
+receipt_validator/dataset/
+receipt_validator/outputs/
+
+# Trained model files / heavy outputs
+*.pt
+*.pth
+*.keras
+*.h5
+*.onnx
+
+# Temporary / experimental folders
+scratch/
+
+# Logs/cache
+*.log
+.cache/

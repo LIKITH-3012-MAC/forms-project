@@ -24,8 +24,8 @@ MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024  # 3 MB
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MIN_IMAGE_DIMENSION = 50
 BLUR_THRESHOLD = 30.0  # Laplacian variance below this = blurry
-BRIGHTNESS_LOW = 20.0
-BRIGHTNESS_HIGH = 245.0
+BRIGHTNESS_LOW = 12.0
+BRIGHTNESS_HIGH = 253.0  # Raised: payment screenshots (white bg) are naturally very bright
 
 # OCR positive receipt keywords (case-insensitive matching)
 OCR_SUCCESS_KEYWORDS = [

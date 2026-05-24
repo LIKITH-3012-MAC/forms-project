@@ -1,6 +1,6 @@
 {
-  "model_name": "LogisticRegression",
-  "calibration": "sigmoid",
+  "model_name": "ExtraTrees",
+  "calibration": "isotonic",
   "feature_dim": 1285,
   "visual_embedding_dim": 1280,
   "quality_features": [
@@ -14,10 +14,17 @@
     "not_receipt",
     "receipt"
   ],
+  "training_samples": {
+    "train_receipt": 423,
+    "train_not_receipt": 700,
+    "val_receipt": 4,
+    "val_not_receipt": 60,
+    "test_receipt": 18,
+    "test_not_receipt": 62
+  },
   "thresholds": {
     "likely_receipt": 0.92,
     "uncertain_low": 0.7,
     "not_receipt": 0.7
-  },
-  "warning": "Current accuracy is not reliable for production because the positive class is built from only five unique receipt images."
+  }
 }

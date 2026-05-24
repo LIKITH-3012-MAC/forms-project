@@ -1,21 +1,12 @@
 {
-  "accuracy": 0.5172413793103449,
-  "balanced_accuracy": 0.5882352941176471,
-  "precision_receipt": 1.0,
-  "recall_receipt": 0.17647058823529413,
-  "f1_receipt": 0.3,
-  "precision_not_receipt": 0.46153846153846156,
-  "recall_not_receipt": 1.0,
-  "f1_not_receipt": 0.631578947368421,
-  "brier_score": 0.25440405963084867,
-  "roc_auc": 0.9558823529411764,
-  "pr_auc": 0.9608153044571731,
-  "false_positive_rate": 0.0,
-  "false_negative_rate": 0.8235294117647058,
-  "confusion_matrix": {
-    "TP": 3,
-    "TN": 12,
-    "FP": 0,
-    "FN": 14
-  }
+  "selected_model": "ExtraTrees",
+  "calibration_method": "isotonic",
+  "test_accuracy": 0.9875,
+  "test_balanced_accuracy": 0.9919354838709677,
+  "test_precision_receipt": 0.9473684210526315,
+  "test_recall_receipt": 1.0,
+  "test_f1_receipt": 0.972972972972973,
+  "test_brier_score": 0.0125,
+  "test_roc_auc": 0.9919354838709677,
+  "test_false_positive_rate": 0.016129032258064516
 }
