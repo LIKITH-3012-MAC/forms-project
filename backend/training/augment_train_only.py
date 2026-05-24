@@ -11,33 +11,93 @@ random.seed(42)
 
 def split_dataset():
     """Split deduplicated images into train/val/test folders.
-    Receipts are split by family (seed id) to avoid any leakage.
+    Receipts are split by family to avoid any leakage.
     Not_receipts are split randomly.
     """
     base_dir = Path(__file__).parent.parent.parent / "dataset"
     
-    # 1. Split Receipts by family (there are 5 seeds from 5 original receipt families)
+    # Clean previous splits if any
+    for split in ["train", "val", "test"]:
+        for cls in ["receipt", "not_receipt"]:
+            p = base_dir / split / cls
+            if p.exists():
+                shutil.rmtree(p)
+            p.mkdir(parents=True, exist_ok=True)
+
+    # 1. Group Receipts by family
     receipt_files = sorted(list((base_dir / "deduplicated/receipt").glob("*")))
     
-    # Let's shuffle and assign to train/val/test
-    # 3 seeds for train, 1 seed for val, 1 seed for test
-    random.shuffle(receipt_files)
-    
-    train_receipt_seeds = receipt_files[:3]
-    val_receipt_seeds = receipt_files[3:4]
-    test_receipt_seeds = receipt_files[4:]
-    
-    for f in train_receipt_seeds:
-        shutil.copy2(f, base_dir / "train/receipt" / f.name)
-    for f in val_receipt_seeds:
-        shutil.copy2(f, base_dir / "val/receipt" / f.name)
-    for f in test_receipt_seeds:
-        shutil.copy2(f, base_dir / "test/receipt" / f.name)
+    families = {}
+    for f in receipt_files:
+        name = f.name
+        if "receipt_seed_1" in name:
+            fam = "seed_1"
+        elif "receipt_seed_2" in name:
+            fam = "seed_2"
+        elif "receipt_seed_3" in name:
+            fam = "seed_3"
+        elif "receipt_seed_4" in name:
+            fam = "seed_4"
+        elif "receipt_seed_5" in name:
+            fam = "seed_5"
+        elif "944a2809ea1b4cda6ef12d1db9048ed3" in name:
+            fam = "screen_944"
+        elif "49b96b5fbae0d12a18edc4a3afe0dfd9" in name:
+            fam = "screen_49b"
+        elif "WhatsApp" in name:
+            fam = f"whatsapp_{name}"
+        else:
+            fam = f"other_{name}"
+            
+        if fam not in families:
+            families[fam] = []
+        families[fam].append(f)
         
-    print(f"Receipt seeds split: Train={len(train_receipt_seeds)}, Val={len(val_receipt_seeds)}, Test={len(test_receipt_seeds)}")
+    print(f"Grouped receipts into {len(families)} distinct families:")
+    for fam, files in families.items():
+        print(f"  {fam}: {len(files)} files")
+        
+    # Split families deterministically to avoid train/val/test leakage
+    fam_names = sorted(list(families.keys()))
     
+    # We assign:
+    # Train: seed_1, seed_2, seed_3, screen_944, and some WhatsApps
+    # Val: seed_4, and some WhatsApps
+    # Test: seed_5, screen_49b (genuine unseen family), and some WhatsApps
+    train_fams = {"seed_1", "seed_2", "seed_3", "screen_944"}
+    val_fams = {"seed_4"}
+    test_fams = {"seed_5", "screen_49b"}
+    
+    # Distribute the remaining WhatsApp or other families
+    other_fams = [f for f in fam_names if f not in train_fams and f not in val_fams and f not in test_fams]
+    random.seed(42)
+    random.shuffle(other_fams)
+    
+    for idx, fam in enumerate(other_fams):
+        if idx % 3 == 0:
+            train_fams.add(fam)
+        elif idx % 3 == 1:
+            val_fams.add(fam)
+        else:
+            test_fams.add(fam)
+            
+    print(f"Family split: Train={len(train_fams)}, Val={len(val_fams)}, Test={len(test_fams)}")
+    
+    # Copy files to splits
+    for fam, files in families.items():
+        if fam in train_fams:
+            split_name = "train"
+        elif fam in val_fams:
+            split_name = "val"
+        else:
+            split_name = "test"
+            
+        for f in files:
+            shutil.copy2(f, base_dir / split_name / "receipt" / f.name)
+            
     # 2. Split Not_receipts randomly
     not_receipt_files = sorted(list((base_dir / "deduplicated/not_receipt").glob("*")))
+    random.seed(42)
     random.shuffle(not_receipt_files)
     
     total = len(not_receipt_files)
@@ -49,12 +109,13 @@ def split_dataset():
     test_not_receipts = not_receipt_files[val_end:]
     
     for f in train_not_receipts:
-        shutil.copy2(f, base_dir / "train/not_receipt" / f.name)
+        shutil.copy2(f, base_dir / "train" / "not_receipt" / f.name)
     for f in val_not_receipts:
-        shutil.copy2(f, base_dir / "val/not_receipt" / f.name)
+        shutil.copy2(f, base_dir / "val" / "not_receipt" / f.name)
     for f in test_not_receipts:
-        shutil.copy2(f, base_dir / "test/not_receipt" / f.name)
+        shutil.copy2(f, base_dir / "test" / "not_receipt" / f.name)
         
+    print(f"Receipt split: Train={len(list((base_dir / 'train/receipt').glob('*')))}, Val={len(list((base_dir / 'val/receipt').glob('*')))}, Test={len(list((base_dir / 'test/receipt').glob('*')))}")
     print(f"Not_receipt split: Train={len(train_not_receipts)}, Val={len(val_not_receipts)}, Test={len(test_not_receipts)}")
     return base_dir
 

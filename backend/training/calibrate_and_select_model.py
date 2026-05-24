@@ -60,7 +60,8 @@ def main():
     # Load the best raw model
     best_model = joblib.load(str(models_dir / f"candidate_{best_name}.pkl"))
     
-    calibrated = CalibratedClassifierCV(best_model, cv="prefit", method="sigmoid")
+    from sklearn.calibration import FrozenEstimator
+    calibrated = CalibratedClassifierCV(estimator=FrozenEstimator(best_model), method="sigmoid")
         
     calibrated.fit(X_val_scaled, y_val)
     

@@ -88,8 +88,8 @@ def predict_receipt_similarity(file_bytes: bytes) -> dict:
             label = "payment_receipt"
             msg = "Strong payment receipt similarity"
         elif match_percentage >= 55:
-            label = "uncertain"
-            msg = "Uncertain receipt match"
+            label = "needs_review"
+            msg = "Review Needed: Uncertain receipt match"
         else:
             label = "non_receipt"
             msg = "Image does not resemble a payment receipt"
@@ -202,8 +202,8 @@ def predict_receipt_similarity(file_bytes: bytes) -> dict:
             label = "payment_receipt"
             msg = "Strong payment receipt similarity"
         elif match_percentage >= 40:
-            label = "uncertain"
-            msg = "Uncertain receipt match"
+            label = "needs_review"
+            msg = "Review Needed: Uncertain receipt match"
         else:
             label = "non_receipt"
             msg = "This image does not strongly resemble a payment receipt."

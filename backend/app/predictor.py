@@ -137,8 +137,8 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
         return {
             "success": True,
             "filename": filename,
-            "prediction": "uncertain",
-            "status": "uncertain",
+            "prediction": "needs_review",
+            "status": "needs_review",
             "allow_submission": False,
             "receipt_probability": 0.0,
             "not_receipt_probability": 0.0,
@@ -261,14 +261,14 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
         message = "Your screenshot seems original and accurate. Manual verification will confirm the transaction."
     elif receipt_pct >= 50:
         # 50-60% — borderline, seems 50-50 but still allow submission
-        status = "uncertain"
-        prediction = "uncertain"
+        status = "needs_review"
+        prediction = "needs_review"
         allow_submission = True
         message = "Your receipt seems 50-50 — we'll verify it manually. You can proceed with submission."
     elif receipt_pct >= THRESHOLD_UNCERTAIN_LOW * 100:
         # Between uncertain_low (default 70% but effectively 40-50% range now) and 50%
-        status = "uncertain"
-        prediction = "uncertain"
+        status = "needs_review"
+        prediction = "needs_review"
         allow_submission = False
         message = "Receipt confidence is not high enough. Please upload a clearer successful payment screenshot."
     else:

@@ -6,6 +6,10 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
 def train_visual_model():
+    # Force CPU to avoid Metal GPU plugin crashes on Apple Silicon M2
+    import tensorflow as tf
+    tf.config.set_visible_devices([], 'GPU')
+    
     base_dir = Path(__file__).parent.parent.parent
     train_dir = base_dir / "dataset/train"
     val_dir = base_dir / "dataset/val"

@@ -314,8 +314,8 @@ def run_legacy_compatibility(predict_result: dict) -> dict:
     pred = predict_result.get("prediction")
     if pred == "receipt":
         label = "payment_receipt"
-    elif pred == "uncertain":
-        label = "uncertain"
+    elif pred in ("uncertain", "needs_review"):
+        label = "needs_review"
     else:
         label = "non_receipt"
         

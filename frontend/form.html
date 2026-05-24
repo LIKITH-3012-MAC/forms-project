@@ -888,7 +888,7 @@
       if (status === "likely_receipt") {
         stateClass = "state-high";
         badgeText = "Verified";
-      } else if (status === "uncertain") {
+      } else if (status === "uncertain" || status === "needs_review") {
         stateClass = "state-medium";
         badgeText = "Review Needed";
       } else {
@@ -918,7 +918,7 @@
         }
       }, 30);
       
-      document.getElementById("aiResultTitle").innerText = status === "likely_receipt" ? "Receipt Verified" : (status === "uncertain" ? "Verify Transaction Details" : "Invalid Payment Receipt");
+      document.getElementById("aiResultTitle").innerText = status === "likely_receipt" ? "Receipt Verified" : ((status === "uncertain" || status === "needs_review") ? "Verify Transaction Details" : "Invalid Payment Receipt");
       document.getElementById("aiResultMessage").innerText = message;
       
       const fill = document.getElementById("aiProgressFill");
