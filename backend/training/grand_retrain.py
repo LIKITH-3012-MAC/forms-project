@@ -426,44 +426,22 @@ def finetune_backbone():
     # Build feature-only model (up to GlobalAveragePooling2D)
     feature_model = models.Model(inputs=model.input, outputs=model.get_layer("feature_output").output)
 
-    # Save as SavedModel first, then convert to ONNX
-    saved_model_dir = str(MODELS_DIR / "saved_model_temp")
-    feature_model.save(saved_model_dir)
-
-    print("Converting to ONNX...")
-    import subprocess
-    onnx_path = str(MODELS_DIR / "receipt_feature_extractor.onnx")
-    result = subprocess.run(
-        [
-            sys.executable, "-m", "tf2onnx.convert",
-            "--saved-model", saved_model_dir,
-            "--output", onnx_path,
-            "--opset", "13"
-        ],
-        capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        print(f"tf2onnx error: {result.stderr}")
-        # Fallback: try using keras directly
-        result2 = subprocess.run(
-            [
-                sys.executable, "-m", "tf2onnx.convert",
-                "--keras", str(keras_path),
-                "--output", onnx_path,
-                "--opset", "13"
-            ],
-            capture_output=True, text=True
+    print("Converting feature extractor to ONNX...")
+    import tf2onnx
+    onnx_path = MODELS_DIR / "receipt_feature_extractor.onnx"
+    spec = (tf.TensorSpec((None, 224, 224, 3), tf.float32, name="input_1"),)
+    
+    try:
+        tf2onnx.convert.from_keras(
+            feature_model,
+            input_signature=spec,
+            opset=13,
+            output_path=str(onnx_path)
         )
-        if result2.returncode != 0:
-            print(f"tf2onnx fallback error: {result2.stderr}")
-            print("WARNING: ONNX export failed. Using existing ONNX model.")
-        else:
-            print(f"✓ ONNX feature extractor exported: {onnx_path}")
-    else:
         print(f"✓ ONNX feature extractor exported: {onnx_path}")
-
-    # Cleanup
-    shutil.rmtree(saved_model_dir, ignore_errors=True)
+    except Exception as e:
+        print(f"ONNX export error: {e}")
+        print("WARNING: ONNX export failed. Using existing ONNX model.")
 
     return model
 

@@ -1,12 +1,12 @@
 {
-  "selected_model": "ExtraTrees",
-  "calibration_method": "isotonic",
-  "test_accuracy": 0.9875,
-  "test_balanced_accuracy": 0.9919354838709677,
-  "test_precision_receipt": 0.9473684210526315,
+  "selected_model": "SVM_RBF",
+  "calibration": "isotonic",
+  "test_accuracy": 1.0,
+  "test_balanced_accuracy": 1.0,
+  "test_precision_receipt": 1.0,
   "test_recall_receipt": 1.0,
-  "test_f1_receipt": 0.972972972972973,
-  "test_brier_score": 0.0125,
-  "test_roc_auc": 0.9919354838709677,
-  "test_false_positive_rate": 0.016129032258064516
+  "test_f1_receipt": 1.0,
+  "test_brier_score": 0.0023404903678328416,
+  "test_false_positive_rate": 0.0,
+  "test_roc_auc": 1.0
 }

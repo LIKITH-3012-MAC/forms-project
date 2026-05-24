@@ -1,5 +1,5 @@
 {
-  "model_name": "ExtraTrees",
+  "model_name": "SVM_RBF",
   "calibration": "isotonic",
   "feature_dim": 1285,
   "visual_embedding_dim": 1280,
@@ -15,16 +15,11 @@
     "receipt"
   ],
   "training_samples": {
-    "train_receipt": 423,
-    "train_not_receipt": 700,
+    "train_receipt": 169,
+    "train_not_receipt": 900,
     "val_receipt": 4,
-    "val_not_receipt": 60,
-    "test_receipt": 18,
-    "test_not_receipt": 62
-  },
-  "thresholds": {
-    "likely_receipt": 0.92,
-    "uncertain_low": 0.7,
-    "not_receipt": 0.7
+    "val_not_receipt": 90,
+    "test_receipt": 5,
+    "test_not_receipt": 92
   }
 }
