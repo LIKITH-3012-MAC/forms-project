@@ -148,6 +148,15 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
             "message": quality.get("reason", "Image quality is too poor for reliable receipt analysis."),
         }
 
+    # Wait for models to load if they are currently loading in background
+    if _models_loading:
+        import time
+        max_wait = 45 # seconds
+        for _ in range(max_wait):
+            if not _models_loading:
+                break
+            time.sleep(1)
+
     # Check if models are loaded
     if not _models_loaded:
         return {
