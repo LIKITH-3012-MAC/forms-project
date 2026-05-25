@@ -164,38 +164,64 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
             "message": "Receipt recognition model is not available. Manual verification will be required.",
         }
 
-    # Stage B: Visual Feature Extraction
-    try:
-        img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
-        img_resized = img.resize((224, 224), Image.BILINEAR)
-        img_array = np.array(img_resized, dtype=np.float32)
+    # Stage B & C: Parallel Visual Feature Extraction & OCR Analysis
+    import threading
 
-        # Batch dimension first: shape (1, 224, 224, 3)
-        img_batch = np.expand_dims(img_array, axis=0)
+    visual_result = {}
+    ocr_result = {}
+    visual_error = None
 
-        # Run ONNX inference
-        outputs = _feature_session.run([_feature_output_name], {_feature_input_name: img_batch})
-        visual_embedding = outputs[0].flatten()
+    def run_visual():
+        nonlocal visual_error
+        try:
+            img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+            img_resized = img.resize((224, 224), Image.BILINEAR)
+            img_array = np.array(img_resized, dtype=np.float32)
 
-        # Quality features
-        blur_score = quality["blur_score"]
-        brightness = quality["brightness_score"]
-        orig_w = quality["width"]
-        orig_h = quality["height"]
-        aspect_ratio = orig_w / max(orig_h, 1)
+            # Batch dimension first: shape (1, 224, 224, 3)
+            img_batch = np.expand_dims(img_array, axis=0)
 
-        quality_features = np.array([blur_score, brightness, aspect_ratio, orig_w, orig_h], dtype=np.float32)
-        combined = np.concatenate([visual_embedding, quality_features]).reshape(1, -1)
+            # Run ONNX inference
+            outputs = _feature_session.run([_feature_output_name], {_feature_input_name: img_batch})
+            visual_embedding = outputs[0].flatten()
 
-        # Scale and predict
-        combined_scaled = _scaler.transform(combined)
-        proba = _classifier.predict_proba(combined_scaled)[0]
+            # Quality features
+            blur_score = quality["blur_score"]
+            brightness = quality["brightness_score"]
+            orig_w = quality["width"]
+            orig_h = quality["height"]
+            aspect_ratio = orig_w / max(orig_h, 1)
 
-        receipt_prob = float(proba[1])
-        not_receipt_prob = float(proba[0])
+            quality_features = np.array([blur_score, brightness, aspect_ratio, orig_w, orig_h], dtype=np.float32)
+            combined = np.concatenate([visual_embedding, quality_features]).reshape(1, -1)
 
-    except Exception as e:
-        print(f"Visual prediction error: {e}")
+            # Scale and predict
+            combined_scaled = _scaler.transform(combined)
+            proba = _classifier.predict_proba(combined_scaled)[0]
+
+            visual_result["receipt_prob"] = float(proba[1])
+            visual_result["not_receipt_prob"] = float(proba[0])
+        except Exception as e:
+            visual_error = e
+
+    def run_ocr():
+        nonlocal ocr_result
+        try:
+            ocr_result.update(analyze_receipt_text(file_bytes))
+        except Exception as e:
+            print(f"Parallel OCR thread error: {e}")
+
+    t_visual = threading.Thread(target=run_visual)
+    t_ocr = threading.Thread(target=run_ocr)
+
+    t_visual.start()
+    t_ocr.start()
+
+    t_visual.join()
+    t_ocr.join()
+
+    if visual_error:
+        print(f"Visual prediction error: {visual_error}")
         return {
             "success": True,
             "filename": filename,
@@ -210,8 +236,8 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
             "message": "AI analysis failed. Manual verification will be required.",
         }
 
-    # Stage C: OCR Analysis
-    ocr_result = analyze_receipt_text(file_bytes)
+    receipt_prob = visual_result.get("receipt_prob", 0.0)
+    not_receipt_prob = visual_result.get("not_receipt_prob", 100.0)
 
     # Stage D: Final Decision
     has_failure = ocr_result.get("has_failure_or_pending_keyword", False)
@@ -224,58 +250,51 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
     # Decision logic
     receipt_pct = receipt_prob * 100  # convert to percentage for readability
 
+    # Determine final displayed score and allow_submission based on OCR overrides and visual score
+    if has_failure:
+        receipt_probability_display = 0.0
+        allow_submission = False
+    elif ocr_confirms:
+        receipt_probability_display = 100.0
+        allow_submission = True
+    else:
+        receipt_probability_display = round(receipt_pct, 2)
+        allow_submission = (receipt_probability_display >= 50.0)
+
+    # Assign state, prediction, and message based on the same rules
     if has_failure:
         status = "suspicious_or_not_successful"
         prediction = "receipt_like_but_not_successful"
-        allow_submission = False
         message = "This image resembles a payment screen but does not show a confirmed successful payment."
-    elif receipt_prob >= THRESHOLD_LIKELY_RECEIPT and ocr_confirms:
-        status = "likely_receipt"
-        prediction = "receipt"
-        allow_submission = True
-        message = "This appears to be a successful payment receipt. Transaction verification is still required."
-    elif receipt_prob >= THRESHOLD_LIKELY_RECEIPT and not ocr_confirms:
-        # High visual score but OCR doesn't confirm — still accept but with caution
-        status = "likely_receipt"
-        prediction = "receipt"
-        allow_submission = True
-        message = "This appears to be a payment receipt. OCR could not fully confirm transaction details. Manual verification recommended."
     elif ocr_confirms:
-        # OCR confirms success, app, and amount, but visual score is low (e.g. new receipt format).
-        # We allow submission but flag it as uncertain for manual verification.
         status = "likely_receipt"
         prediction = "receipt"
-        allow_submission = True
-        message = "Receipt layout not fully recognized, but transaction details verified. Manual verification recommended."
-    elif receipt_pct >= 75:
-        # 75%+ visual confidence without OCR — still confident enough
-        status = "likely_receipt"
-        prediction = "receipt"
-        allow_submission = True
-        message = "Your screenshot seems original and accurate. Manual verification will confirm the transaction."
-    elif receipt_pct >= 60:
-        # 60-75% — confident it's original
-        status = "likely_receipt"
-        prediction = "receipt"
-        allow_submission = True
-        message = "Your screenshot seems original and accurate. Manual verification will confirm the transaction."
-    elif receipt_pct >= 50:
-        # 50-60% — borderline, seems 50-50 but still allow submission
-        status = "needs_review"
-        prediction = "needs_review"
-        allow_submission = True
-        message = "Your receipt seems 50-50 — we'll verify it manually. You can proceed with submission."
-    elif receipt_pct >= THRESHOLD_UNCERTAIN_LOW * 100:
-        # Between uncertain_low (default 70% but effectively 40-50% range now) and 50%
-        status = "needs_review"
-        prediction = "needs_review"
-        allow_submission = False
-        message = "Receipt confidence is not high enough. Please upload a clearer successful payment screenshot."
+        if receipt_prob >= THRESHOLD_LIKELY_RECEIPT:
+            message = "This appears to be a successful payment receipt. Transaction verification is still required."
+        else:
+            message = "Receipt layout not fully recognized, but transaction details verified. Manual verification recommended."
     else:
-        status = "not_receipt"
-        prediction = "not_receipt"
-        allow_submission = False
-        message = "This image does not appear to be a valid successful payment receipt."
+        # No OCR override
+        if receipt_prob >= THRESHOLD_LIKELY_RECEIPT:
+            status = "likely_receipt"
+            prediction = "receipt"
+            message = "This appears to be a payment receipt. OCR could not fully confirm transaction details. Manual verification recommended."
+        elif receipt_probability_display >= 75:
+            status = "likely_receipt"
+            prediction = "receipt"
+            message = "Your screenshot seems original and accurate. Manual verification will confirm the transaction."
+        elif receipt_probability_display >= 60:
+            status = "likely_receipt"
+            prediction = "receipt"
+            message = "Your screenshot seems original and accurate. Manual verification will confirm the transaction."
+        elif receipt_probability_display >= 50:
+            status = "needs_review"
+            prediction = "needs_review"
+            message = "Your receipt seems 50-50 — we'll verify it manually. You can proceed with submission."
+        else:
+            status = "not_receipt"
+            prediction = "not_receipt"
+            message = "This image does not appear to be a valid successful payment receipt."
 
     return {
         "success": True,
@@ -283,7 +302,7 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
         "prediction": prediction,
         "status": status,
         "allow_submission": allow_submission,
-        "receipt_probability": round(receipt_prob * 100, 2),
+        "receipt_probability": receipt_probability_display,
         "not_receipt_probability": round(not_receipt_prob * 100, 2),
         "quality": {
             "acceptable": quality["acceptable"],

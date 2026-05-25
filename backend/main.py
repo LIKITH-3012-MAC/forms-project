@@ -364,7 +364,8 @@ async def predict_receipt_endpoint(file: UploadFile = File(...)):
     try:
         contents = await file.read()
         from app.predictor import predict_receipt
-        result = predict_receipt(contents, file.content_type, file.filename)
+        from fastapi.concurrency import run_in_threadpool
+        result = await run_in_threadpool(predict_receipt, contents, file.content_type, file.filename)
         return result
     except Exception as e:
         print("Predict Receipt Endpoint Error:", e)

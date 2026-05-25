@@ -60,6 +60,14 @@ def analyze_receipt_text(file_bytes: bytes) -> dict:
         import pytesseract
         img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
 
+        # Downscale the image if it is too large to speed up OCR significantly
+        max_dim = 800
+        w, h = img.size
+        if max(w, h) > max_dim:
+            scale = max_dim / max(w, h)
+            resampling = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.BICUBIC
+            img = img.resize((int(w * scale), int(h * scale)), resampling)
+
         # Run OCR
         full_text = pytesseract.image_to_string(img).lower()
         result["ocr_available"] = True

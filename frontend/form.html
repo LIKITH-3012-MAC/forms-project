@@ -718,7 +718,7 @@
         window.location.hostname === "localhost" ||
         window.location.hostname === "127.0.0.1"
           ? "http://localhost:8000"
-          : "https://forms-project-qcdc.onrender.com"
+          : "https://forms-project-1-xe3v.onrender.com"
     };
 
     if (
@@ -926,16 +926,51 @@
       fill.style.width = `${targetVal}%`;
     }
     
+    function resizeImage(file, maxDim = 800) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            let w = img.width;
+            let h = img.height;
+            if (Math.max(w, h) > maxDim) {
+              const scale = maxDim / Math.max(w, h);
+              w = Math.round(w * scale);
+              h = Math.round(h * scale);
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+            canvas.toBlob((blob) => {
+              const newFile = new File([blob], file.name, {
+                type: "image/jpeg",
+                lastModified: Date.now()
+              });
+              resolve(newFile);
+            }, "image/jpeg", 0.85);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
     async function analyzeReceiptScreenshot(file) {
       if (!file) return;
 
       const requestId = ++latestAiRequestId;
       showAiAnalyzingState();
 
-      const aiFormData = new FormData();
-      aiFormData.append("file", file);
-
       try {
+        // Resize image on client side first (reduces size from ~3MB to ~80KB, making upload instant)
+        const resizedFile = await resizeImage(file, 800);
+
+        const aiFormData = new FormData();
+        aiFormData.append("file", resizedFile);
+
         const response = await fetch(`${CONFIG.BACKEND_URL}/api/receipt/predict`, {
           method: "POST",
           body: aiFormData

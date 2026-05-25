@@ -35,13 +35,11 @@ def _laplacian_variance(gray_array: np.ndarray) -> float:
     h, w = gray_array.shape
     # Pad image
     padded = np.pad(gray_array, 1, mode='edge')
-    # Apply convolution manually
-    result = np.zeros_like(gray_array)
-    for i in range(3):
-        for j in range(3):
-            result += kernel[i, j] * padded[i:i+h, j:j+w]
+    # Apply convolution using fast NumPy slicing
+    result = padded[0:h, 1:1+w] + padded[2:2+h, 1:1+w] + padded[1:1+h, 0:w] + padded[1:1+h, 2:2+w] - 4.0 * gray_array
 
     return float(np.var(result))
+
 
 
 def validate_image(file_bytes: bytes, content_type: str = None) -> dict:
