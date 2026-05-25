@@ -213,21 +213,11 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
         except Exception as e:
             visual_error = e
 
-    def run_ocr():
-        nonlocal ocr_result
-        try:
-            ocr_result.update(analyze_receipt_text(file_bytes))
-        except Exception as e:
-            print(f"Parallel OCR thread error: {e}")
-
+    # Bypassing OCR completely to ensure millisecond response times on cloud
+    # as requested by the user.
     t_visual = threading.Thread(target=run_visual)
-    t_ocr = threading.Thread(target=run_ocr)
-
     t_visual.start()
-    t_ocr.start()
-
     t_visual.join()
-    t_ocr.join()
 
     if visual_error:
         print(f"Visual prediction error: {visual_error}")
