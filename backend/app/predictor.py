@@ -213,11 +213,18 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
         except Exception as e:
             visual_error = e
 
-    # Bypassing OCR completely to ensure millisecond response times on cloud
-    # as requested by the user.
     t_visual = threading.Thread(target=run_visual)
     t_visual.start()
     t_visual.join()
+
+    receipt_prob = visual_result.get("receipt_prob", 0.0)
+
+    # Run OCR if the visual receipt probability is at least 40%
+    if receipt_prob >= 0.40:
+        try:
+            ocr_result.update(analyze_receipt_text(file_bytes))
+        except Exception as e:
+            print(f"OCR error: {e}")
 
     if visual_error:
         print(f"Visual prediction error: {visual_error}")
