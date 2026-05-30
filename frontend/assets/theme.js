@@ -108,8 +108,8 @@ async function apiFetch(path, options = {}, timeoutMs = 15000) {
   const backendUrl = typeof CONFIG !== "undefined" && CONFIG.BACKEND_URL 
     ? CONFIG.BACKEND_URL 
     : (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
-       ? "https://forms-project-qcdc.onrender.com" 
-       : "https://forms-project-qcdc.onrender.com");
+       ? "https://forms-project-p7np.onrender.com" 
+       : "https://forms-project-p7np.onrender.com");
 
   try {
     const res = await fetch(`${backendUrl}${path}`, {
