@@ -1338,6 +1338,131 @@ async def admin_resend_email(
         "admin_note": reg.admin_note or ""
     }
 
+def dispatch_call_sync(api_key: str, agent_id: int, to_number: str, call_context: dict):
+    import urllib.request
+    import urllib.error
+    import json
+
+    url = "https://backend.omnidim.io/api/v1/calls/dispatch"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "User-Agent": "FastAPI-Backend"
+    }
+    body = {
+        "agent_id": agent_id,
+        "to_number": to_number,
+        "call_context": call_context
+    }
+    data = json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    
+    try:
+        with urllib.request.urlopen(req, timeout=10.0) as response:
+            res_body = response.read().decode("utf-8")
+            return response.status, json.loads(res_body)
+    except urllib.error.HTTPError as e:
+        res_body = e.read().decode("utf-8")
+        try:
+            err_detail = json.loads(res_body)
+        except:
+            err_detail = {"detail": res_body}
+        return e.code, err_detail
+    except Exception as e:
+        return 500, {"detail": str(e)}
+
+@app.post("/api/admin/call/{registration_id}")
+async def admin_call_registrant(
+    registration_id: str,
+    payload: schemas.AdminAction,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    """Triggers outbound AI Agent Voice Call to registrant via OmniDimension."""
+    reg = db.query(models.EventRegistration).filter(
+        models.EventRegistration.registration_id == registration_id
+    ).first()
+
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration record not found.")
+
+    new_note = (payload.admin_note or "").strip()
+    if new_note:
+        reg.admin_note = new_note
+        db.commit()
+        db.refresh(reg)
+
+    phone = reg.phone.strip()
+    # Normalize phone number to include country code (defaulting to +91)
+    normalized_phone = phone.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    if normalized_phone.startswith("+"):
+        pass
+    elif len(normalized_phone) == 10 and normalized_phone.isdigit():
+        normalized_phone = "+91" + normalized_phone
+    elif len(normalized_phone) == 12 and normalized_phone.startswith("91") and normalized_phone.isdigit():
+        normalized_phone = "+" + normalized_phone
+    else:
+        normalized_phone = "+91" + normalized_phone
+
+    call_context = {
+        "customer_name": reg.full_name,
+        "registration_id": reg.registration_id,
+        "event_name": reg.event_name,
+        "payment_status": reg.payment_status.replace("_", " "),
+        "upi_reference_id": reg.upi_reference_id,
+        "admin_note": reg.admin_note or "Please review your payment reference details."
+    }
+
+    api_key = config.OMNI_API_KEY
+    agent_id_str = config.OMNI_AGENT_ID
+
+    if not api_key or not agent_id_str:
+        # Graceful simulation fallback
+        message = "Simulated AI agent call: API credentials not fully configured in Render environment."
+        call_response = {"simulated": True, "status": "pending"}
+    else:
+        try:
+            agent_id = int(agent_id_str)
+            status_code, call_response = dispatch_call_sync(api_key, agent_id, normalized_phone, call_context)
+            if status_code in (200, 201):
+                message = "AI agent call dispatched successfully"
+            else:
+                detail = call_response.get("detail") or str(call_response)
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"OmniDimension API dispatch failed (Status {status_code}): {detail}"
+                )
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid OMNI_AGENT_ID configured. Must be an integer.")
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                raise e
+            raise HTTPException(status_code=500, detail=f"Failed to initiate calling flow: {str(e)}")
+
+    client_ip = get_client_ip(request)
+    audit = models.RegistrationAuditLog(
+        registration_id=registration_id,
+        action="AI_AGENT_CALL",
+        new_data=json.dumps({
+            "message": message,
+            "to_number": normalized_phone,
+            "call_context": call_context,
+            "response": call_response
+        }),
+        performed_by="admin",
+        ip_address=client_ip
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": message,
+        "phone": normalized_phone,
+        "admin_note": reg.admin_note or ""
+    }
+
 @app.get("/api/admin/export.csv")
 async def admin_export_csv(
     search: Optional[str] = "",

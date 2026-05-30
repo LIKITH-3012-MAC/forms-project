@@ -445,6 +445,9 @@
           <div class="btn-row">
             <button class="neo-btn neo-btn-primary" id="btnResend" onclick="resendEmail()">Resend Status Email</button>
           </div>
+          <div class="btn-row">
+            <button class="neo-btn neo-btn-primary" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); border-color: rgba(139, 92, 246, 0.3); color: #ffffff;" id="btnCall" onclick="callAgent()">Call via AI Agent 📞</button>
+          </div>
         </div>
       </div>
     </div>
@@ -734,6 +737,36 @@
           return;
         }
         showToast(err.message, "danger");
+        markButtonError(btn, "Failed");
+      }
+    }
+
+    async function callAgent() {
+      checkAuth();
+      const note = getAdminActionNote();
+      const btn = document.getElementById("btnCall");
+      setButtonLoading(btn, "Initiating Call...");
+
+      try {
+        const data = await apiFetch(`/api/admin/call/${registrationId}`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${adminToken}`,
+            "X-Admin-Token": adminToken
+          },
+          body: JSON.stringify({ admin_note: note })
+        });
+
+        showToast(data.message || "AI voice agent call initiated successfully", "success");
+        markButtonSuccess(btn, "Calling... 📞");
+        setTimeout(loadDetail, 1000);
+      } catch (err) {
+        console.error(err);
+        if (err.status === 401 || (err.message && (err.message.includes("401") || err.message.toLowerCase().includes("unauthorized") || err.message.toLowerCase().includes("token")))) {
+          handleLogout();
+          return;
+        }
+        showToast(err.message || "Failed to initiate AI call", "danger");
         markButtonError(btn, "Failed");
       }
     }
