@@ -130,7 +130,9 @@ async function apiFetch(path, options = {}, timeoutMs = 15000) {
       const message = typeof data === "object"
         ? data.message || data.detail || "Request failed"
         : "Request failed";
-      throw new Error(message);
+      const error = new Error(message);
+      error.status = res.status;
+      throw error;
     }
 
     return data;

@@ -530,7 +530,7 @@
         renderPagination(data.pagination);
       } catch (err) {
         console.error(err);
-        if (err.message && err.message.includes("401")) {
+        if (err.status === 401 || (err.message && (err.message.includes("401") || err.message.toLowerCase().includes("unauthorized") || err.message.toLowerCase().includes("token")))) {
           handleLogout();
           return;
         }
