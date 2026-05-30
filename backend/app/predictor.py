@@ -316,7 +316,7 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
         "status": status,
         "allow_submission": allow_submission,
         "receipt_probability": receipt_probability_display,
-        "not_receipt_probability": round(not_receipt_prob * 100, 2),
+        "not_receipt_probability": round(100.0 - receipt_probability_display, 2),
         "quality": {
             "acceptable": quality["acceptable"],
             "blur_detected": quality["blur_detected"],

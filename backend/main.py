@@ -128,7 +128,7 @@ app.add_middleware(
         "http://127.0.0.1:5500",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
-        "https://forms-project-qcdc.onrender.com",
+        "https://forms-project-p7np.onrender.com",
         "https://forms-project-f3sb.vercel.app",
         config.FRONTEND_URL
     ],

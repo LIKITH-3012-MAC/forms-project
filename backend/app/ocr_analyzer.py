@@ -153,7 +153,7 @@ def analyze_receipt_text(file_bytes: bytes) -> dict:
 
         # Penalize if failure keywords found
         if result["has_failure_or_pending_keyword"]:
-            result["ocr_signal_score"] = max(0.0, result["ocr_signal_score"] - 0.5)
+            result["ocr_signal_score"] = 0.0
 
     except Exception as e:
         print(f"OCR analysis error: {e}")

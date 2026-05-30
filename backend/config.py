@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 APP_NAME = os.getenv("APP_NAME", "Event Registration System")
-BASE_URL = os.getenv("BASE_URL", "https://forms-project-qcdc.onrender.com").rstrip("/")
+BASE_URL = os.getenv("BASE_URL", "https://forms-project-p7np.onrender.com").rstrip("/")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://forms-project-f3sb.vercel.app/").rstrip("/")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
