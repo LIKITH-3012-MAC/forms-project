@@ -93,7 +93,14 @@ def load_models():
 
 
 def load_models_background():
-    """Load models in a background thread so server can bind to port immediately."""
+    """Load models lazily to prevent OOM errors on limited memory environments like Render free tier."""
+    import os
+    # On production (Render free tier), we don't load ML models in background to avoid OOM crash on startup.
+    # They will be loaded synchronously on first request if needed, or we rely on manual verification.
+    if os.getenv("ENVIRONMENT") == "production":
+        print("⏸ Skipping background model loading on production to save memory.")
+        return
+        
     thread = threading.Thread(target=load_models, daemon=True)
     thread.start()
     print("⏳ Model loading started in background thread...")
