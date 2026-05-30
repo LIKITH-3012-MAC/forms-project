@@ -810,33 +810,46 @@
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    function handleFileSelect(file) {
+    async function handleFileSelect(file) {
       const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
       if (!allowedTypes.includes(file.type)) {
         showToast("Screenshot file must be JPG, PNG, or WEBP.", "danger");
         return;
       }
 
-      const maxSizeBytes = 3 * 1024 * 1024;
+      const maxSizeBytes = 10 * 1024 * 1024;
       if (file.size > maxSizeBytes) {
-        showToast("Screenshot size must be below 3MB.", "danger");
+        showToast("Screenshot size must be below 10MB.", "danger");
         return;
       }
 
-      selectedFile = file;
-      paymentFileName.innerText = file.name;
-      paymentFileSize.innerText = formatBytes(file.size);
+      paymentFileName.innerText = "Processing image...";
+      paymentFileSize.innerText = "";
+      uploadPlaceholder.style.display = "none";
+      uploadPreview.style.display = "block";
+      paymentPreviewImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111827'/><text x='50' y='55' fill='%239ca3af' font-family='sans-serif' font-size='10' text-anchor='middle'>Compressing...</text></svg>";
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        paymentPreviewImg.src = e.target.result;
-        uploadPlaceholder.style.display = "none";
-        uploadPreview.style.display = "block";
-        
-        // Trigger AI analysis without blocking
-        analyzeReceiptScreenshot(file);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedFile = await resizeImage(file, 800);
+        selectedFile = compressedFile;
+
+        paymentFileName.innerText = file.name;
+        paymentFileSize.innerText = `${formatBytes(compressedFile.size)} (Compressed from ${formatBytes(file.size)})`;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          paymentPreviewImg.src = e.target.result;
+          analyzeReceiptScreenshot(compressedFile);
+        };
+        reader.readAsDataURL(compressedFile);
+      } catch (err) {
+        console.error("Image compression failed:", err);
+        showToast("Failed to process screenshot. Please try again.", "danger");
+        selectedFile = null;
+        fileInput.value = "";
+        uploadPreview.style.display = "none";
+        uploadPlaceholder.style.display = "block";
+      }
     }
     
     // AI Receipt Logic
@@ -965,11 +978,8 @@
       showAiAnalyzingState();
 
       try {
-        // Resize image on client side first (reduces size from ~3MB to ~80KB, making upload instant)
-        const resizedFile = await resizeImage(file, 800);
-
         const aiFormData = new FormData();
-        aiFormData.append("file", resizedFile);
+        aiFormData.append("file", file);
 
         const response = await fetch(`${CONFIG.BACKEND_URL}/api/receipt/predict`, {
           method: "POST",
