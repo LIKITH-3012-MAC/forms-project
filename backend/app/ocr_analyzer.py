@@ -22,7 +22,16 @@ def get_ocr_reader():
     if _ocr_engine is None:
         try:
             from rapidocr_onnxruntime import RapidOCR
-            _ocr_engine = RapidOCR()
+            # Single-threaded configuration optimized for Render fractional CPUs (0.1 core)
+            # Disable angle classifier (use_cls=False) for faster response times
+            params = {
+                "Det.intra_op_num_threads": 1,
+                "Det.inter_op_num_threads": 1,
+                "Rec.intra_op_num_threads": 1,
+                "Rec.inter_op_num_threads": 1,
+                "use_cls": False
+            }
+            _ocr_engine = RapidOCR(params=params)
             print("✓ RapidOCR reader initialized.")
         except Exception as e:
             print(f"⚠️ RapidOCR not available: {e}")
@@ -57,6 +66,15 @@ def analyze_receipt_text(file_bytes: bytes) -> dict:
 
     try:
         img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+        
+        # Downscale aggressively on the backend (max_dim=500) to ensure
+        # fast ONNX-based OCR on Render's 0.1 CPU core (takes ~300ms instead of 5s)
+        max_dim = 500
+        w, h = img.size
+        if max(w, h) > max_dim:
+            scale = max_dim / max(w, h)
+            img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.BICUBIC)
+
         img_np = np.array(img)
 
         # Run OCR
