@@ -16,8 +16,8 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
 DB_NAME = os.getenv("DB_NAME", "event_db")
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
-OMNI_API_KEY = os.getenv("OMNI_API_KEY", "")
-OMNI_AGENT_ID = os.getenv("OMNI_AGENT_ID", "")
+OMNI_API_KEY = os.getenv("OMNIDIM_API_KEY", "")
+OMNI_AGENT_ID = os.getenv("OMNIDIM_AGENT_ID", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "events@yourdomain.com")
 
 ADMIN_SECRET = os.getenv("ADMIN_SECRET", "change_this_admin_password")
