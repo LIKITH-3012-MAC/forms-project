@@ -451,8 +451,7 @@ def send_certificate_email(registration, db: Session):
                 </a>
             </div>
             
-            <p style="margin: 0 0 20px 0; font-size: 14px; color: #94a3b8; text-align: center;">Click the button above or use this link:<br>
-            <a href="{cert_link}" style="color: #38bdf8; word-break: break-all;">{cert_link}</a></p>
+
             
             <hr style="border: 0; border-top: 1px solid #334155; margin: 30px 0 20px 0;">
             
