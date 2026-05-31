@@ -164,6 +164,11 @@ def predict_receipt(file_bytes: bytes, content_type: str = None, filename: str =
                 break
             time.sleep(1)
 
+    # If models are not loaded and not loading, load them synchronously now
+    if not _models_loaded and not _models_loading:
+        print("Models not loaded. Loading synchronously on first request...")
+        load_models()
+
     # Check if models are loaded
     if not _models_loaded:
         return {
