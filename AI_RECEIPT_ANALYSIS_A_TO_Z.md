@@ -786,14 +786,25 @@ To push the system towards higher production reliability:
 
 ---
 
-## 56. Glossary
+## 57. Memory Optimization and INT8 Quantization (Cloud Deployment)
+When deploying the ML pipeline to constrained environments (like Render's 512MB free tier), memory crashes (OOM) can occur during inference due to the combination of `onnxruntime`, `scikit-learn`, and `fastapi` loading simultaneously. 
+
+To overcome this constraint without losing accuracy:
+1. **Synchronous Loading:** Models are loaded lazily on the first request rather than in the background, ensuring memory spikes are predictable.
+2. **Dynamic INT8 Quantization:** The 15.3 MB float32 ONNX model (`receipt_feature_extractor.onnx`) is converted into an 8-bit integer quantized model (`receipt_feature_extractor_quantized.onnx`). 
+   - **Impact:** This drops the model size to ~4.2 MB (nearly a 4x reduction) and dramatically reduces the RAM footprint during runtime `onnxruntime` inference, preventing OOM crashes in the cloud.
+
+---
+
+## 58. Glossary
 - **CNN (Convolutional Neural Network):** A deep learning architecture designed for image processing.
 - **ONNX (Open Neural Network Exchange):** A cross-platform format used to run models across different frameworks.
+- **Quantization:** The process of converting floating-point neural network weights into 8-bit integers to save memory and increase inference speed.
 - **Transfer Learning:** Repurposing a pre-trained model on a new, specific task.
 - **Isotonic Calibration:** A method used to map raw classifier scores into realistic probability percentages.
 - **UTR (Unique Transaction Reference):** The unique 12-digit number used to track UPI transactions.
 
 ---
 
-## 57. Final Summary
-The SAKRA VISION AI Receipt Validation system combines deep visual feature extraction (ONNX EfficientNetB0), physical quality metrics fusion, calibrated SVM classification, and PyTesseract OCR. This multi-stage check provides a premium, highly secured event registration platform, blocking spam uploads and streamlining the manual verification process for organizers.
+## 59. Final Summary
+The SAKRA VISION AI Receipt Validation system combines deep visual feature extraction (ONNX EfficientNetB0, Quantized to INT8), physical quality metrics fusion, calibrated SVM classification, and PyTesseract OCR. This multi-stage check provides a premium, highly secured event registration platform, blocking spam uploads and streamlining the manual verification process for organizers, all while being optimized to run on memory-constrained free-tier cloud servers.
