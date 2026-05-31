@@ -347,6 +347,11 @@
       background: #1c2024;
       border-radius: 8px;
     }
+    
+    .export-mode {
+      transform: scale(1) !important;
+      margin-bottom: 0 !important;
+    }
 
     @media (max-width: 1100px) { .cert-wrapper { transform: scale(0.8); transform-origin: top center; margin-bottom: -150px; } }
     @media (max-width: 850px) { .cert-wrapper { transform: scale(0.6); margin-bottom: -300px; } }
@@ -516,20 +521,38 @@
 
     async function downloadCertificate() {
       const btn = document.getElementById('downloadBtn');
+      const loading = document.getElementById('loading');
       const originalText = btn.innerHTML;
-      btn.innerHTML = 'Generating High-Res PNG...';
+      
+      btn.innerHTML = 'Generating...';
       btn.disabled = true;
+      
+      // Show loading overlay so user doesn't see the screen jump
+      loading.querySelector('div:last-child').innerText = 'Rendering High-Res Certificate...';
+      loading.style.display = 'flex';
 
       try {
+        const wrapper = document.querySelector('.cert-wrapper');
         const node = document.getElementById('certificateNode');
         
-        await new Promise(r => setTimeout(r, 100));
+        // Temporarily remove mobile scaling to ensure html2canvas captures full 1056x816 resolution
+        wrapper.classList.add('export-mode');
+        
+        // Wait for DOM to update and apply unscaled styles
+        await new Promise(r => setTimeout(r, 300));
 
         const canvas = await html2canvas(node, {
-          scale: 3, 
+          scale: 3, // Multiplies the 1056x816 by 3 for print-ready 300dpi PNG
           useCORS: true,
-          backgroundColor: '#1c2024'
+          backgroundColor: '#1c2024',
+          width: 1056,
+          height: 816,
+          windowWidth: 1056,
+          windowHeight: 816
         });
+        
+        // Restore mobile scale
+        wrapper.classList.remove('export-mode');
 
         const imgData = canvas.toDataURL('image/png');
         
@@ -546,6 +569,8 @@
         console.error("Failed to render canvas", err);
         alert("Failed to generate download. Please try again.");
       } finally {
+        // Hide loading and restore button
+        loading.style.display = 'none';
         btn.innerHTML = originalText;
         btn.disabled = false;
       }
