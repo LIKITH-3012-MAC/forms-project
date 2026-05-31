@@ -32,10 +32,8 @@
 
     .cert-wrapper {
       width: 100%;
-      display: flex;
-      justify-content: center;
-      overflow-x: auto;
-      padding-bottom: 20px;
+      max-width: 1056px;
+      position: relative;
     }
 
     /* Outer dark border container */
@@ -363,14 +361,6 @@
       overflow: visible !important;
       z-index: -9999 !important;
     }
-
-    @media (max-width: 1100px) { .cert-wrapper { transform: scale(0.8); transform-origin: top center; margin-bottom: -150px; } }
-    @media (max-width: 850px) { .cert-wrapper { transform: scale(0.6); margin-bottom: -300px; } }
-    @media (max-width: 650px) {
-      .cert-wrapper { transform: scale(0.4); margin-bottom: -450px; }
-      .controls { flex-direction: column; width: 100%; }
-      .btn { width: 100%; justify-content: center; }
-    }
   </style>
 </head>
 <body>
@@ -522,7 +512,34 @@
       // Show container
       document.getElementById('loading').style.display = 'none';
       document.getElementById('mainContainer').style.display = 'flex';
+      
+      // Calculate fit scale for the first time
+      resizeCertificate();
     }
+    
+    function resizeCertificate() {
+      const wrapper = document.querySelector('.cert-wrapper');
+      const cert = document.getElementById('certificateNode');
+      const container = document.getElementById('mainContainer');
+      
+      if (!wrapper || !cert || wrapper.classList.contains('export-mode')) return;
+      
+      const availableWidth = container.clientWidth;
+      let scale = availableWidth / 1056;
+      if (scale > 1) scale = 1;
+      
+      cert.style.transformOrigin = 'top left';
+      cert.style.transform = `scale(${scale})`;
+      wrapper.style.height = `${816 * scale}px`;
+      
+      if (scale === 1) {
+        cert.style.margin = '0 auto';
+      } else {
+        cert.style.margin = '0';
+      }
+    }
+    
+    window.addEventListener('resize', resizeCertificate);
 
     function showError(msg) {
       document.getElementById('loading').style.display = 'none';
@@ -548,6 +565,8 @@
         
         // Temporarily remove mobile scaling to ensure html2canvas captures full 1056x816 resolution
         // The .export-mode class forces position: fixed and exact px dimensions
+        node.style.transform = 'none';
+        wrapper.style.height = '816px';
         wrapper.classList.add('export-mode');
         
         // Wait for DOM to update and apply unscaled styles
@@ -565,6 +584,7 @@
         
         // Restore mobile scale
         wrapper.classList.remove('export-mode');
+        resizeCertificate();
 
         const imgData = canvas.toDataURL('image/png');
         
