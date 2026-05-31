@@ -56,7 +56,15 @@ class EventRegistration(Base):
     updated_at = Column(DateTime, default=get_ist_time, onupdate=get_ist_time)
     approved_at = Column(DateTime, nullable=True)
     rejected_at = Column(DateTime, nullable=True)
-
+    
+    # Participant Attendance & Certificate
+    attended = Column(Boolean, default=False)
+    attended_at = Column(DateTime, nullable=True)
+    certificate_sent = Column(Boolean, default=False)
+    certificate_sent_at = Column(DateTime, nullable=True)
+    certificate_token = Column(String(255), unique=True, nullable=True)
+    certificate_download_count = Column(Integer, default=0)
+    certificate_last_downloaded_at = Column(DateTime, nullable=True)
 
 class RegistrationAuditLog(Base):
     __tablename__ = "registration_audit_logs"

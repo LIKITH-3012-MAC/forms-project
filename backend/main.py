@@ -43,6 +43,8 @@ def send_email_background(registration_id: int, email_type: str):
             email_sent = email_service.send_needs_correction_email(registration, db)
         elif email_type == "resend_email":
             email_sent = email_service.send_latest_status_email(registration, db)
+        elif email_type == "certificate":
+            email_sent = email_service.send_certificate_email(registration, db)
         else:
             email_sent = False
 
@@ -1068,7 +1070,14 @@ async def admin_registration_detail(
             "approved_at": reg.approved_at.strftime("%Y-%m-%d %H:%M:%S") if reg.approved_at else None,
             "rejected_at": reg.rejected_at.strftime("%Y-%m-%d %H:%M:%S") if reg.rejected_at else None,
             "user_agent": reg.user_agent,
-            "ip_address": reg.ip_address
+            "ip_address": reg.ip_address,
+            "attended": reg.attended,
+            "attended_at": reg.attended_at.strftime("%Y-%m-%d %H:%M:%S") if reg.attended_at else None,
+            "certificate_sent": reg.certificate_sent,
+            "certificate_sent_at": reg.certificate_sent_at.strftime("%Y-%m-%d %H:%M:%S") if reg.certificate_sent_at else None,
+            "certificate_token": reg.certificate_token,
+            "certificate_download_count": reg.certificate_download_count,
+            "certificate_last_downloaded_at": reg.certificate_last_downloaded_at.strftime("%Y-%m-%d %H:%M:%S") if reg.certificate_last_downloaded_at else None
         },
         "audits": audits_data,
         "emails": emails_data
@@ -1462,6 +1471,100 @@ async def admin_call_registrant(
         "phone": normalized_phone,
         "admin_note": reg.admin_note or ""
     }
+
+@app.post("/api/admin/mark-attended/{registration_id}")
+async def admin_mark_attended(
+    registration_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin_auth: str = Depends(verify_admin_token)
+):
+    """Marks registration as attended and sends certificate email."""
+    reg = db.query(models.EventRegistration).filter(
+        models.EventRegistration.registration_id == registration_id
+    ).first()
+
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration record not found.")
+
+    if not reg.attended:
+        reg.attended = True
+        reg.attended_at = get_ist_time()
+        
+        # Generate token if not already exists
+        if not reg.certificate_token:
+            import uuid
+            reg.certificate_token = f"REG-CERT-{uuid.uuid4().hex[:10].upper()}"
+
+        db.commit()
+        db.refresh(reg)
+
+    # Queue certificate email
+    background_tasks.add_task(send_email_background, reg.id, "certificate")
+    
+    # Update state
+    reg.certificate_sent = True
+    reg.certificate_sent_at = get_ist_time()
+    db.commit()
+
+    client_ip = get_client_ip(request)
+    audit = models.RegistrationAuditLog(
+        registration_id=registration_id,
+        action="MARK_ATTENDED",
+        new_data=json.dumps({"message": "Marked attended and queued certificate email"}),
+        performed_by="admin",
+        ip_address=client_ip
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Attendance marked and certificate email sent successfully",
+        "certificate_url": frontend_url(f"certificate.html?token={reg.certificate_token}")
+    }
+
+@app.get("/api/certificate/{token}")
+async def get_certificate_data(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """Retrieves participant certificate data based on token."""
+    reg = db.query(models.EventRegistration).filter(
+        models.EventRegistration.certificate_token == token
+    ).first()
+
+    if not reg:
+        raise HTTPException(status_code=404, detail="Invalid certificate token.")
+
+    return {
+        "success": True,
+        "customer_name": reg.full_name,
+        "event_name": reg.event_name,
+        "event_date": "15 June 2026", # Assuming static date as per request or use reg.created_at
+        "certificate_id": f"SV-CERT-2026-{reg.id:04d}",
+        "organization": "Sakra Vision"
+    }
+
+@app.post("/api/certificate/{token}/downloaded")
+async def mark_certificate_downloaded(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """Increments the certificate download count."""
+    reg = db.query(models.EventRegistration).filter(
+        models.EventRegistration.certificate_token == token
+    ).first()
+
+    if not reg:
+        raise HTTPException(status_code=404, detail="Invalid certificate token.")
+
+    reg.certificate_download_count = (reg.certificate_download_count or 0) + 1
+    reg.certificate_last_downloaded_at = get_ist_time()
+    db.commit()
+
+    return {"success": True}
 
 @app.get("/api/admin/export.csv")
 async def admin_export_csv(

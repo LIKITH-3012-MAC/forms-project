@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate of Participation - SAKRA VISION</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #0f1115;
+      font-family: 'Montserrat', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .page-container {
+      max-width: 1100px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .cert-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+      padding-bottom: 20px;
+    }
+
+    /* Outer dark border container */
+    .certificate {
+      width: 1056px;
+      height: 816px;
+      background: #1c2024;
+      padding: 14px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+      position: relative;
+    }
+
+    /* Inner clean container */
+    .cert-inner {
+      width: 100%;
+      height: 100%;
+      background-color: #fcfcfb;
+      /* Security pattern background */
+      background-image: 
+        linear-gradient(rgba(252, 252, 251, 0.95), rgba(252, 252, 251, 0.95)),
+        repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(212, 175, 55, 0.05) 10px, rgba(212, 175, 55, 0.05) 11px),
+        repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(11, 37, 69, 0.05) 10px, rgba(11, 37, 69, 0.05) 11px);
+      border: 3px solid #d4af37;
+      box-shadow: inset 0 0 0 6px #fcfcfb, inset 0 0 0 7px #1c2024;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 40px 60px;
+      overflow: hidden;
+    }
+
+    /* Header Section */
+    .brand-name {
+      font-family: 'Big Caslon', 'Libre Caslon Text', serif;
+      font-size: 34px;
+      font-weight: 700;
+      color: #0b2545;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    
+    .brand-sub {
+      font-size: 11px;
+      color: #a31621;
+      font-weight: 800;
+      letter-spacing: 4px;
+      margin-bottom: 25px;
+      text-transform: uppercase;
+    }
+
+    /* Title Section */
+    .cert-title {
+      font-family: 'Big Caslon', 'Libre Caslon Text', serif;
+      font-size: 58px;
+      font-weight: 700;
+      color: #0b2545;
+      text-transform: uppercase;
+      line-height: 1.1;
+      margin-bottom: 25px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.08);
+      letter-spacing: 2px;
+    }
+
+    /* Recipient Section */
+    .presented-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: #5e6c7a;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    
+    .recipient-name {
+      font-family: 'Big Caslon', 'Libre Caslon Text', serif;
+      font-size: 54px;
+      font-style: italic;
+      color: #a31621;
+      line-height: 1.2;
+      border-bottom: 2px solid #cbd5e1;
+      padding-bottom: 5px;
+      margin-bottom: 20px;
+      width: 100%;
+      max-width: 850px;
+      word-wrap: break-word;
+    }
+
+    /* Achievement Section */
+    .achievement-text {
+      font-size: 15px;
+      color: #141c24;
+      line-height: 1.6;
+      font-weight: 500;
+      max-width: 800px;
+      margin-bottom: 15px;
+    }
+    
+    .event-name {
+      font-size: 26px;
+      font-weight: 800;
+      color: #0b2545;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 30px;
+    }
+
+    /* Details Row */
+    .details-row {
+      display: flex;
+      justify-content: center;
+      gap: 60px;
+      margin-bottom: 20px;
+      width: 100%;
+    }
+    
+    .detail-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 250px;
+    }
+    
+    .detail-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: #a31621;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 5px;
+      width: 100%;
+    }
+    
+    .detail-value {
+      font-size: 13px;
+      color: #141c24;
+      line-height: 1.5;
+      font-weight: 600;
+    }
+
+    /* Footer Section */
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+      margin-top: auto;
+    }
+    
+    .sig-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 200px;
+    }
+    
+    .sig-content {
+      font-family: 'Big Caslon', 'Libre Caslon Text', serif;
+      font-size: 28px;
+      font-style: italic;
+      color: #0b2545;
+      height: 45px;
+      display: flex;
+      align-items: flex-end;
+      padding-bottom: 6px;
+      white-space: nowrap;
+    }
+    
+    .sig-line {
+      width: 100%;
+      height: 2px;
+      background: #141c24;
+      margin-bottom: 8px;
+    }
+    
+    .sig-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: #141c24;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .center-badges {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+    }
+    
+    .qr-container {
+      width: 80px;
+      height: 80px;
+      background: white;
+      border: 1px solid #cbd5e1;
+      padding: 5px;
+      border-radius: 4px;
+    }
+    
+    .qr-container canvas, .qr-container img {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    
+    .badge-block {
+      width: 85px;
+      height: 85px;
+      background: linear-gradient(135deg, #f7e6a1, #a8872b);
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255,255,255,0.5);
+      border: 2px solid white;
+      position: relative;
+    }
+    
+    .badge-block::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      border: 1px dashed #a8872b;
+    }
+    
+    .badge-icon {
+      font-size: 22px;
+      color: white;
+      line-height: 1;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .badge-text {
+      font-size: 8px;
+      font-weight: 900;
+      color: white;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 20px;
+      background: #1c2024;
+      padding: 20px 40px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      align-items: center;
+    }
+
+    .btn {
+      padding: 14px 28px;
+      border-radius: 4px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-primary {
+      background: #d4af37;
+      color: #141c24;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      background: #f7e6a1;
+    }
+    
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 17, 21, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .spinner {
+      border: 3px solid rgba(212, 175, 55, 0.2);
+      border-top: 3px solid #d4af37;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .error-state {
+      text-align: center;
+      color: #ef4444;
+      padding: 40px;
+      background: #1c2024;
+      border-radius: 8px;
+    }
+
+    @media (max-width: 1100px) { .cert-wrapper { transform: scale(0.8); transform-origin: top center; margin-bottom: -150px; } }
+    @media (max-width: 850px) { .cert-wrapper { transform: scale(0.6); margin-bottom: -300px; } }
+    @media (max-width: 650px) {
+      .cert-wrapper { transform: scale(0.4); margin-bottom: -450px; }
+      .controls { flex-direction: column; width: 100%; }
+      .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="loading" class="loading-overlay">
+    <div class="spinner"></div>
+    <div style="color: #d4af37; font-weight: 600; letter-spacing: 1px;">Generating Certificate...</div>
+  </div>
+
+  <div class="page-container" id="mainContainer" style="display: none;">
+    <div class="controls">
+      <button class="btn btn-primary" id="downloadBtn" onclick="downloadCertificate()">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        Download High-Res PNG
+      </button>
+      <div style="font-size: 14px; color: #aaa;">Industry Standard Format (300 DPI equivalent)</div>
+    </div>
+
+    <div class="cert-wrapper">
+      <div class="certificate" id="certificateNode">
+        <div class="cert-inner">
+          
+          <!-- Header -->
+          <div class="brand-name">SAKRA VISION</div>
+          <div class="brand-sub">AI & AUTOMATION EXCELLENCE</div>
+          
+          <!-- Title -->
+          <div class="cert-title">Certificate of Excellence</div>
+          
+          <!-- Recipient -->
+          <div class="presented-text">This credential is proudly awarded to</div>
+          <div class="recipient-name" id="certName">John Doe</div>
+          
+          <!-- Achievement -->
+          <div class="achievement-text">
+            For successfully fulfilling all comprehensive training requirements, demonstrating exceptional proficiency, and achieving high learning outcomes in the program:
+          </div>
+          <div class="event-name" id="certEvent">Sakra Vision Event 2026</div>
+          
+          <!-- Details Row -->
+          <div class="details-row">
+            <div class="detail-col">
+              <div class="detail-label">Skills & Technologies</div>
+              <div class="detail-value">Artificial Intelligence, Machine Learning, Automation Workflows, Python</div>
+            </div>
+            <div class="detail-col">
+              <div class="detail-label">Duration & Effort</div>
+              <div class="detail-value">40 Hours Intensive Training<br>Verified Completion</div>
+            </div>
+            <div class="detail-col">
+              <div class="detail-label">Credential ID</div>
+              <div class="detail-value" style="font-family: monospace; font-size: 14px;" id="certId">SV-CERT-0000</div>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="footer-row">
+            
+            <!-- Date Signature -->
+            <div class="sig-col">
+              <div class="sig-content" style="font-family: 'Montserrat', sans-serif; font-weight: 700; font-style: normal; font-size: 18px;" id="certDate">
+                15 June 2026
+              </div>
+              <div class="sig-line"></div>
+              <div class="sig-label">ISSUE DATE</div>
+            </div>
+            
+            <!-- Badges -->
+            <div class="center-badges">
+              <div class="badge-block">
+                <div class="badge-icon">★</div>
+                <div class="badge-text">VERIFIED<br>ACHIEVEMENT</div>
+              </div>
+              <div class="qr-container" id="qrcode"></div>
+            </div>
+            
+            <!-- Instructor Signature -->
+            <div class="sig-col">
+              <div class="sig-content">Likith N.</div>
+              <div class="sig-line"></div>
+              <div class="sig-label">LEAD INSTRUCTOR</div>
+            </div>
+            
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="errorContainer" class="error-state" style="display: none;">
+    <h2>Unable to load certificate</h2>
+    <p id="errorMsg" style="margin-top: 10px;"></p>
+  </div>
+
+  <script>
+    const CONFIG = {
+      BACKEND_URL:
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8000"
+          : "https://forms-project-p7np.onrender.com"
+    };
+
+    let certData = null;
+    let certToken = null;
+
+    async function init() {
+      const urlParams = new URLSearchParams(window.location.search);
+      certToken = urlParams.get("token");
+
+      if (!certToken) {
+        showError("No certificate token provided.");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${CONFIG.BACKEND_URL}/api/certificate/${certToken}`);
+        if (!response.ok) {
+          throw new Error("Invalid or expired certificate token.");
+        }
+
+        const data = await response.json();
+        if (!data.success) throw new Error("Failed to load certificate.");
+
+        certData = data;
+        renderCertificate();
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    function renderCertificate() {
+      document.getElementById('certName').innerText = certData.customer_name;
+      document.getElementById('certEvent').innerText = certData.event_name;
+      document.getElementById('certDate').innerText = certData.event_date;
+      document.getElementById('certId').innerText = certData.certificate_id;
+      
+      const verificationUrl = `${window.location.origin}/certificate.html?token=${certToken}`;
+
+      // Generate QR Code
+      new QRCode(document.getElementById("qrcode"), {
+        text: verificationUrl,
+        width: 68,
+        height: 68,
+        colorDark : "#0b2545",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.L
+      });
+
+      // Show container
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('mainContainer').style.display = 'flex';
+    }
+
+    function showError(msg) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('errorContainer').style.display = 'block';
+      document.getElementById('errorMsg').innerText = msg;
+    }
+
+    async function downloadCertificate() {
+      const btn = document.getElementById('downloadBtn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = 'Generating High-Res PNG...';
+      btn.disabled = true;
+
+      try {
+        const node = document.getElementById('certificateNode');
+        
+        await new Promise(r => setTimeout(r, 100));
+
+        const canvas = await html2canvas(node, {
+          scale: 3, 
+          useCORS: true,
+          backgroundColor: '#1c2024'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        
+        const link = document.createElement('a');
+        link.download = `SakraVision_Certificate_${certData.customer_name.replace(/\\s+/g, '_')}.png`;
+        link.href = imgData;
+        link.click();
+        
+        fetch(`${CONFIG.BACKEND_URL}/api/certificate/${certToken}/downloaded`, {
+          method: 'POST'
+        }).catch(err => console.error("Failed to notify download", err));
+
+      } catch (err) {
+        console.error("Failed to render canvas", err);
+        alert("Failed to generate download. Please try again.");
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

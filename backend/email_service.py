@@ -418,3 +418,56 @@ def send_latest_status_email(registration, db: Session):
     else:
         # Default or PENDING_REVIEW
         return send_submission_received_email(registration, db)
+
+def send_certificate_email(registration, db: Session):
+    subject = f"Thank You for Attending {config.EVENT_NAME} | Your Certificate is Ready"
+    
+    cert_link = frontend_url(f"certificate.html?token={registration.certificate_token}")
+    
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Certificate is Ready</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #f8fafc;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0f172a;">
+        <div style="text-align: center; padding: 20px 0; background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%); border-radius: 12px 12px 0 0; border-bottom: 2px solid #8b5cf6;">
+            <h1 style="margin: 0; font-size: 24px; color: #ffffff; letter-spacing: -0.025em; font-weight: 800;">{escape_html(config.ORGANIZER_NAME)}</h1>
+            <p style="margin: 5px 0 0 0; font-size: 14px; color: #c084fc;">{escape_html(config.EVENT_NAME)}</p>
+        </div>
+        
+        <div style="background-color: #1e293b; padding: 30px; border-radius: 0 0 12px 12px; border: 1px solid #334155; border-top: none;">
+            <p style="margin: 0 0 20px 0; font-size: 16px; color: #f1f5f9;">Hello <strong>{escape_html(registration.full_name)}</strong>,</p>
+            
+            <p style="margin: 0 0 15px 0; font-size: 15px; color: #cbd5e1; line-height: 1.6;">Thank you for attending <strong>{escape_html(config.EVENT_NAME)}</strong>.</p>
+            <p style="margin: 0 0 15px 0; font-size: 15px; color: #cbd5e1; line-height: 1.6;">We are glad to have you with us during the workshop. Your participation, energy, and performance were truly appreciated by the Sakra Vision team. We hope this event helped you gain valuable knowledge and practical experience.</p>
+            <p style="margin: 0 0 25px 0; font-size: 15px; color: #cbd5e1; line-height: 1.6;">Your participation certificate is now ready.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{cert_link}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                    View & Download Certificate
+                </a>
+            </div>
+            
+            <p style="margin: 0 0 20px 0; font-size: 14px; color: #94a3b8; text-align: center;">Click the button above or use this link:<br>
+            <a href="{cert_link}" style="color: #38bdf8; word-break: break-all;">{cert_link}</a></p>
+            
+            <hr style="border: 0; border-top: 1px solid #334155; margin: 30px 0 20px 0;">
+            
+            <p style="margin: 0; color: #64748b; font-size: 14px; line-height: 1.6;">
+                Thank you once again for being a part of this event.<br><br>
+                Warm regards,<br>
+                <strong>Sakra Vision Team</strong><br>
+                Event Organization Department<br><br>
+                For support, contact:<br>
+                Likith Naidu Anumakonda<br>
+                9440113763
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    return _send_email_api_call(db, registration, "certificate", subject, html_body)
