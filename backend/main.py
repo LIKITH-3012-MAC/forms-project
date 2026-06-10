@@ -659,16 +659,6 @@ async def register_attendee(
             from app.predictor import predict_receipt
             predict_result = predict_receipt(contents, content_type, filename)
             
-            # Backend rejection of non-receipts & suspicious failed screenshots
-            if predict_result.get("prediction") == "not_receipt" or predict_result.get("status") == "suspicious_or_not_successful":
-                return JSONResponse(
-                    status_code=400,
-                    content={
-                        "success": False,
-                        "message": predict_result.get("message", "This image does not appear to be a valid successful payment receipt.")
-                    }
-                )
-                
             ai_result = run_legacy_compatibility(predict_result)
         except Exception as e:
             print("AI inference failed during submission:", e)
