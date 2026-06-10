@@ -9,6 +9,8 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import case, desc, func
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
 
 import config
 import models
@@ -122,18 +124,22 @@ def startup_event():
     load_models_background()
     print("✓ Server started. Models loading in background.")
 
+# Restricted CORS origins
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+    "https://forms-project-p7np.onrender.com",
+    "https://forms-project-f3sb.vercel.app"
+]
+if config.FRONTEND_URL:
+    allowed_origins.append(config.FRONTEND_URL)
+
+allowed_origins = list(set(allowed_origins))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "https://forms-project-p7np.onrender.com",
-        "https://forms-project-f3sb.vercel.app",
-        config.FRONTEND_URL
-    ],
+    allow_origins=allowed_origins,
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
@@ -149,7 +155,7 @@ def is_deadline_passed() -> bool:
         print(f"Deadline date parsing failed: {e}")
         return False
 
-# Dependency: Verify admin token from Authorization header or cookie
+# Dependency: Verify admin token from Authorization header or cookie (excluding query params)
 def verify_admin_token(request: Request) -> str:
     auth_header = request.headers.get("authorization")
     token = None
@@ -161,9 +167,6 @@ def verify_admin_token(request: Request) -> str:
         
     if not token:
         token = request.cookies.get("admin_session")
-        
-    if not token:
-        token = request.query_params.get("token")
 
     if not token:
         raise HTTPException(status_code=401, detail="Unauthorized: No admin token provided.")
@@ -179,6 +182,10 @@ def get_client_ip(request: Request) -> str:
     if x_forwarded_for:
         return x_forwarded_for.split(",")[0].strip()
     return request.client.host if request.client else "127.0.0.1"
+
+# Initialize Limiter using custom client IP resolver
+limiter = Limiter(key_func=get_client_ip)
+app.state.limiter = limiter
 
 def log_problem_to_db(path: str, reason: str, details: str, user_agent: str, ip_address: str, exception_type: str = None):
     try:
@@ -198,6 +205,27 @@ def log_problem_to_db(path: str, reason: str, details: str, user_agent: str, ip_
             db.close()
     except Exception as e:
         print(f"Failed to log problem to DB: {e}", flush=True)
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    user_agent = request.headers.get("user-agent", "Unknown")
+    ip_address = get_client_ip(request)
+    log_problem_to_db(
+        path=str(request.url.path),
+        reason="Rate limit exceeded",
+        details="Too many requests from this client.",
+        user_agent=user_agent,
+        ip_address=ip_address,
+        exception_type="RateLimitExceeded"
+    )
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={
+            "success": False,
+            "message": "Too many requests. Please try again later.",
+            "code": "RATE_LIMIT_EXCEEDED"
+        }
+    )
 
 # Exception Handlers returning JSON
 @app.exception_handler(HTTPException)
@@ -291,7 +319,8 @@ async def get_form_config(db: Session = Depends(get_db)):
     }
 
 @app.get("/api/check-utr/{utr}")
-async def check_utr(utr: str, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+async def check_utr(request: Request, utr: str, db: Session = Depends(get_db)):
     """Checks if a UTR transaction reference already exists in database."""
     cleaned_utr = utr.strip().upper()
     exists = db.query(models.EventRegistration).filter(
@@ -331,63 +360,173 @@ def run_legacy_compatibility(predict_result: dict) -> dict:
     }
 
 @app.post("/api/receipt-ai/check")
-async def check_receipt_ai(payment_screenshot: UploadFile = File(...)):
+@limiter.limit("5/minute")
+async def check_receipt_ai(request: Request, payment_screenshot: UploadFile = File(...)):
     """Live AI check for payment screenshot similarity without submitting registration."""
     try:
         contents = await payment_screenshot.read()
+        file_size = len(contents)
         
-        from app.predictor import predict_receipt
-        predict_result = predict_receipt(
-            contents, payment_screenshot.content_type, payment_screenshot.filename
-        )
-        ai_result = run_legacy_compatibility(predict_result)
-        
-        return {
-            "success": True,
-            "ai_check": ai_result
-        }
-    except Exception as e:
-        print("AI Check Error:", e)
-        return {
-            "success": True, # Keep true to not break frontend
-            "ai_check": {
-                "available": False,
-                "match_percentage": None,
-                "label": "error",
-                "provider": None,
-                "confidence_message": "AI preview unavailable right now.",
-                "model_version": "multi-stage-v1"
+        # Validation: Empty file
+        if file_size == 0:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "message": "Only JPG, PNG, WEBP screenshots are allowed."
+                }
+            )
+            
+        # Validation: Content type
+        allowed_types = ["image/jpeg", "image/png", "image/webp"]
+        if payment_screenshot.content_type not in allowed_types:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "message": "Only JPG, PNG, WEBP screenshots are allowed."
+                }
+            )
+            
+        # Validation: Size limit
+        max_size = 3 * 1024 * 1024
+        if file_size > max_size:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "message": "Screenshot size must be below 3MB."
+                }
+            )
+            
+        # Execute AI preview
+        try:
+            from app.predictor import predict_receipt
+            predict_result = predict_receipt(
+                contents, payment_screenshot.content_type, payment_screenshot.filename
+            )
+            ai_result = run_legacy_compatibility(predict_result)
+            
+            return {
+                "success": True,
+                "ai_check": ai_result
             }
-        }
+        except Exception as inner_e:
+            print("AI Check Internal Inference Error:", inner_e)
+            return {
+                "success": True, # Keep success True if request is valid but AI preview is temporarily unavailable
+                "ai_check": {
+                    "available": False,
+                    "match_percentage": None,
+                    "label": "error",
+                    "provider": None,
+                    "confidence_message": "AI preview is temporarily unavailable.",
+                    "model_version": "multi-stage-v1"
+                }
+            }
+            
+    except Exception as e:
+        print("AI Check Outer Error:", e)
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "success": False,
+                "message": "Invalid request or file."
+            }
+        )
 
 @app.post("/api/receipt/predict")
-async def predict_receipt_endpoint(file: UploadFile = File(...)):
+@limiter.limit("5/minute")
+async def predict_receipt_endpoint(request: Request, file: UploadFile = File(...)):
     """Robust multi-stage receipt validation endpoint for modern frontend integration."""
     try:
         contents = await file.read()
+        file_size = len(contents)
+        
+        # Validation: Empty file
+        if file_size == 0:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "message": "Only JPG, PNG, WEBP screenshots are allowed."
+                }
+            )
+            
+        # Validation: Content type
+        allowed_types = ["image/jpeg", "image/png", "image/webp"]
+        if file.content_type not in allowed_types:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "message": "Only JPG, PNG, WEBP screenshots are allowed."
+                }
+            )
+            
+        # Validation: Size limit
+        max_size = 3 * 1024 * 1024
+        if file_size > max_size:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "message": "Screenshot size must be below 3MB."
+                }
+            )
+            
         from app.predictor import predict_receipt
         from fastapi.concurrency import run_in_threadpool
         result = await run_in_threadpool(predict_receipt, contents, file.content_type, file.filename)
         return result
     except Exception as e:
         print("Predict Receipt Endpoint Error:", e)
-        return {
-            "success": False,
-            "filename": file.filename,
-            "prediction": "error",
-            "status": "server_error",
-            "allow_submission": False,
-            "receipt_probability": 0.0,
-            "not_receipt_probability": 100.0,
-            "quality": None,
-            "ocr_signals": None,
-            "threshold": 92.0,
-            "message": f"Server error: {str(e)}",
-        }
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "success": False,
+                "message": "Invalid request or file."
+            }
+        )
+
+def verify_captcha_token(token: str, remote_ip: str) -> bool:
+    import urllib.request
+    import urllib.parse
+    import json
+    
+    secret_key = config.CAPTCHA_SECRET_KEY
+    verify_url = config.CAPTCHA_VERIFY_URL
+    
+    if not secret_key:
+        print("WARNING: CAPTCHA_SECRET_KEY is not set. Captcha verification bypassed.")
+        return True
+        
+    try:
+        data = urllib.parse.urlencode({
+            "secret": secret_key,
+            "response": token,
+            "remoteip": remote_ip
+        }).encode("utf-8")
+        
+        req = urllib.request.Request(
+            verify_url,
+            data=data,
+            method="POST",
+            headers={"Content-Type": "application/x-www-form-urlencoded"}
+        )
+        
+        with urllib.request.urlopen(req, timeout=10) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            return bool(result.get("success"))
+    except Exception as e:
+        print(f"Captcha verification connection error: {e}")
+        return False
 
 @app.post("/api/register")
+@limiter.limit("3/10 minutes")
 async def register_attendee(
     background_tasks: BackgroundTasks,
+    request: Request,
     full_name: str = Form(...),
     email: str = Form(...),
     phone: str = Form(...),
@@ -398,7 +537,7 @@ async def register_attendee(
     upi_reference_id: str = Form(...),
     agreement: bool = Form(...),
     payment_screenshot: UploadFile = File(...),
-    request: Request = None,
+    captcha_token: str = Form(...),
     db: Session = Depends(get_db)
 ):
     """Processes new registration submission with payment screenshot upload."""
@@ -412,6 +551,17 @@ async def register_attendee(
         upi_reference_id = upi_reference_id.strip().upper()
         print("💳 UTR:", upi_reference_id)
         print("🖼 file:", payment_screenshot.filename, payment_screenshot.content_type)
+
+        # Verify CAPTCHA
+        client_ip = get_client_ip(request)
+        if not verify_captcha_token(captcha_token, client_ip):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "message": "Captcha verification failed. Please try again."
+                }
+            )
 
         approved_count = db.query(models.EventRegistration).filter(
             models.EventRegistration.payment_status == "APPROVED"

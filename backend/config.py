@@ -34,3 +34,8 @@ SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "support@yourdomain.com")
 
 ALLOW_DUPLICATE_EMAIL = os.getenv("ALLOW_DUPLICATE_EMAIL", "false").lower() in ("true", "1", "yes")
 LOCK_EDIT_AFTER_APPROVAL = os.getenv("LOCK_EDIT_AFTER_APPROVAL", "true").lower() in ("true", "1", "yes")
+
+# CAPTCHA configuration
+CAPTCHA_SECRET_KEY = os.getenv("CAPTCHA_SECRET_KEY", "")
+CAPTCHA_VERIFY_URL = os.getenv("CAPTCHA_VERIFY_URL", "https://challenges.cloudflare.com/turnstile/v0/siteverify")
+
