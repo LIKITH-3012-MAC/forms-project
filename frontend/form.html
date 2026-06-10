@@ -9,6 +9,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
   <link rel="manifest" href="/assets/site.webmanifest">
   <meta name="theme-color" content="#020617">
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script>
     (function initTheme() {
       const storedTheme = localStorage.getItem("event-theme");
@@ -684,6 +685,10 @@
           <label for="agreement" class="required" id="agreementLabel">I certify that the UTR/Reference ID provided matches my uploaded payment screenshot and represents a successful fee transfer of ₹700.</label>
         </div>
 
+        <div class="form-group" style="margin-top: 20px; display: flex; justify-content: center;">
+          <div class="cf-turnstile" data-sitekey="0x4AAAAAADiFEczynqPxcHxN" data-theme="dark"></div>
+        </div>
+
         <div class="btn-row">
           <button type="button" class="neo-btn neo-btn-secondary" onclick="prevStep(1)">
             &larr; Back
@@ -1269,6 +1274,8 @@
         payload.append("upi_reference_id", document.getElementById("upi_reference_id").value.trim());
         payload.append("agreement", document.getElementById("agreement").checked ? "true" : "false");
         payload.append("payment_screenshot", screenshotFile);
+        const captcha_token = document.querySelector('[name="cf-turnstile-response"]')?.value || "";
+        payload.append("captcha_token", captcha_token);
 
         const response = await fetch(`${CONFIG.BACKEND_URL}/api/register`, {
           method: "POST",
