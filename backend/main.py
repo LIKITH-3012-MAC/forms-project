@@ -538,7 +538,7 @@ async def register_attendee(
     upi_reference_id: str = Form(...),
     agreement: bool = Form(...),
     payment_screenshot: UploadFile = File(...),
-    captcha_token: str = Form(...),
+    captcha_token: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     """Processes new registration submission with payment screenshot upload."""
@@ -554,6 +554,15 @@ async def register_attendee(
         print("🖼 file:", payment_screenshot.filename, payment_screenshot.content_type)
 
         # Verify CAPTCHA
+        if not captcha_token:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "message": "Captcha token is required."
+                }
+            )
+
         client_ip = get_client_ip(request)
         if not verify_captcha_token(captcha_token, client_ip):
             return JSONResponse(
