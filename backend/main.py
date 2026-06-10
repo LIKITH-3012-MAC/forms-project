@@ -525,7 +525,7 @@ def verify_captcha_token(token: str, remote_ip: str) -> bool:
         return False
 
 @app.post("/api/register")
-@limiter.limit("3/10 minutes")
+@limiter.limit("100/minute")
 async def register_attendee(
     background_tasks: BackgroundTasks,
     request: Request,
