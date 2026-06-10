@@ -564,16 +564,11 @@ async def register_attendee(
                 }
             )
 
-        if config.CAPTCHA_SECRET_TOKEN:
-            if captcha_token != config.CAPTCHA_SECRET_TOKEN:
-                return JSONResponse(
-                    status_code=400,
-                    content={
-                        "success": False,
-                        "message": "Captcha verification failed. Please try again."
-                    }
-                )
+        # Allow static token bypass if configured and matches
+        if config.CAPTCHA_SECRET_TOKEN and captcha_token == config.CAPTCHA_SECRET_TOKEN:
+            pass
         else:
+            # Fall back to verifying via Cloudflare Turnstile / Google reCAPTCHA
             client_ip = get_client_ip(request)
             if not verify_captcha_token(captcha_token, client_ip):
                 return JSONResponse(
