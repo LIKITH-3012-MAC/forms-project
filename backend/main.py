@@ -119,6 +119,7 @@ app = FastAPI(title=config.APP_NAME)
 
 @app.on_event("startup")
 def startup_event():
+    print("EVENT_DEADLINE =", config.EVENT_DEADLINE)
     from app.predictor import load_models_background
     print("Initializing receipt recognition models in background...")
     load_models_background()
