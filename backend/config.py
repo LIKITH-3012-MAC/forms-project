@@ -38,4 +38,5 @@ LOCK_EDIT_AFTER_APPROVAL = os.getenv("LOCK_EDIT_AFTER_APPROVAL", "true").lower()
 # CAPTCHA configuration
 CAPTCHA_SECRET_KEY = os.getenv("CAPTCHA_SECRET_KEY", "")
 CAPTCHA_VERIFY_URL = os.getenv("CAPTCHA_VERIFY_URL", "https://challenges.cloudflare.com/turnstile/v0/siteverify")
+CAPTCHA_SECRET_TOKEN = os.getenv("CAPTCHA_SECRET_TOKEN", "")
 

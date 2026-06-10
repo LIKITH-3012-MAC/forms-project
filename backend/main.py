@@ -120,6 +120,7 @@ app = FastAPI(title=config.APP_NAME)
 @app.on_event("startup")
 def startup_event():
     print("EVENT_DEADLINE =", config.EVENT_DEADLINE)
+    print("CAPTCHA_SECRET_TOKEN loaded:", bool(config.CAPTCHA_SECRET_TOKEN))
     from app.predictor import load_models_background
     print("Initializing receipt recognition models in background...")
     load_models_background()
@@ -559,19 +560,29 @@ async def register_attendee(
                 status_code=400,
                 content={
                     "success": False,
-                    "message": "Captcha token is required."
-                }
-            )
-
-        client_ip = get_client_ip(request)
-        if not verify_captcha_token(captcha_token, client_ip):
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "success": False,
                     "message": "Captcha verification failed. Please try again."
                 }
             )
+
+        if config.CAPTCHA_SECRET_TOKEN:
+            if captcha_token != config.CAPTCHA_SECRET_TOKEN:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "message": "Captcha verification failed. Please try again."
+                    }
+                )
+        else:
+            client_ip = get_client_ip(request)
+            if not verify_captcha_token(captcha_token, client_ip):
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "message": "Captcha verification failed. Please try again."
+                    }
+                )
 
         approved_count = db.query(models.EventRegistration).filter(
             models.EventRegistration.payment_status == "APPROVED"
