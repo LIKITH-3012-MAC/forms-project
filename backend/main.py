@@ -131,7 +131,7 @@ allowed_origins = [
     "http://localhost:3000",
     "http://localhost:5500",
     "http://127.0.0.1:5500",
-    "https://forms-project-p7np.onrender.com",
+    "https://forms-project-qcdc.onrender.com",
     "https://forms-project-f3sb.vercel.app"
 ]
 if config.FRONTEND_URL:
