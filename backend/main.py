@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import FastAPI, Depends, Request, HTTPException, status, Response, Form, File, UploadFile, BackgroundTasks
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import case, desc, func
 from slowapi import Limiter
@@ -147,6 +148,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Helper: Check deadline status
 def is_deadline_passed() -> bool:
@@ -297,9 +300,17 @@ async def receipt_status_check():
     from app.predictor import get_model_status
     return get_model_status()
 
+import time
+_form_config_cache = {"time": 0, "data": None}
+
 @app.get("/api/form-config")
 async def get_form_config(db: Session = Depends(get_db)):
     """Return registration parameters and live seat info as JSON."""
+    global _form_config_cache
+    now = time.time()
+    if now - _form_config_cache["time"] < 10 and _form_config_cache["data"]:
+        return _form_config_cache["data"]
+
     approved_count = db.query(models.EventRegistration).filter(
         models.EventRegistration.payment_status == "APPROVED"
     ).count()
@@ -308,7 +319,7 @@ async def get_form_config(db: Session = Depends(get_db)):
     deadline_passed = is_deadline_passed()
     form_enabled = not deadline_passed and seats_available > 0
 
-    return {
+    data = {
         "event_name": config.EVENT_NAME,
         "event_subtitle": config.EVENT_SUBTITLE,
         "event_amount": config.EVENT_AMOUNT,
@@ -319,6 +330,10 @@ async def get_form_config(db: Session = Depends(get_db)):
         "seats_available": seats_available,
         "form_enabled": form_enabled
     }
+    
+    _form_config_cache["time"] = now
+    _form_config_cache["data"] = data
+    return data
 
 @app.get("/api/check-utr/{utr}")
 @limiter.limit("10/minute")

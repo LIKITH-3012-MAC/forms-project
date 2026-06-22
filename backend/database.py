@@ -21,6 +21,8 @@ try:
         DATABASE_URL,
         pool_pre_ping=True,
         pool_recycle=3600,
+        pool_size=20,
+        max_overflow=10,
         connect_args=connect_args
     )
     # Test connection to trigger exception if MySQL is unavailable

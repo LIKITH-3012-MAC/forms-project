@@ -207,61 +207,67 @@ def render_email_body(registration, title: str, description: str, status_text: s
             <!-- Details Box -->
             <div style="background-color: #0f172a; border-radius: 8px; border: 1px solid #334155; padding: 20px; margin-bottom: 30px; text-align: left;">
                 <h3 style="margin: 0 0 15px 0; font-size: 14px; color: #38bdf8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; border-bottom: 1px solid #334155; padding-bottom: 5px;">Registration Summary</h3>
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed;">
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b; width: 40%;">Registration ID:</td>
-                        <td style="padding: 6px 0; color: #ffffff; font-weight: 600; font-family: monospace;">{reg_id}</td>
+                        <td style="padding: 6px 0; color: #64748b; width: 35%; vertical-align: top;">Registration ID:</td>
+                        <td style="padding: 6px 0; color: #ffffff; font-weight: 600; font-family: monospace; word-break: break-all; overflow-wrap: break-word; width: 65%;">{reg_id}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">Full Name:</td>
-                        <td style="padding: 6px 0; color: #ffffff;">{full_name}</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Full Name:</td>
+                        <td style="padding: 6px 0; color: #ffffff; word-break: break-word; overflow-wrap: break-word;">{full_name}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">Email:</td>
-                        <td style="padding: 6px 0; color: #ffffff;">{email}</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Email:</td>
+                        <td style="padding: 6px 0; color: #ffffff; word-break: break-all; overflow-wrap: break-word;">{email}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">Phone Number:</td>
-                        <td style="padding: 6px 0; color: #ffffff;">{phone}</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Phone Number:</td>
+                        <td style="padding: 6px 0; color: #ffffff; word-break: break-word; overflow-wrap: break-word;">{phone}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">College:</td>
-                        <td style="padding: 6px 0; color: #ffffff;">{college}</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">College:</td>
+                        <td style="padding: 6px 0; color: #ffffff; word-break: break-word; overflow-wrap: break-word;">{college}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">Department:</td>
-                        <td style="padding: 6px 0; color: #ffffff;">{department} (Year {year})</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Department:</td>
+                        <td style="padding: 6px 0; color: #ffffff; word-break: break-word; overflow-wrap: break-word;">{department} (Year {year})</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">Roll Number:</td>
-                        <td style="padding: 6px 0; color: #ffffff;">{roll_number}</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Roll Number:</td>
+                        <td style="padding: 6px 0; color: #ffffff; word-break: break-word; overflow-wrap: break-word;">{roll_number}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">Amount Paid:</td>
-                        <td style="padding: 6px 0; color: #22c55e; font-weight: bold;">₹{amount} (via {upi_id})</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Amount Paid:</td>
+                        <td style="padding: 6px 0; color: #22c55e; font-weight: bold; word-break: break-word; overflow-wrap: break-word;">₹{amount} (via {upi_id})</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">UPI Ref ID / UTR:</td>
-                        <td style="padding: 6px 0; color: #ffffff; font-family: monospace;">{utr}</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">UPI Ref ID / UTR:</td>
+                        <td style="padding: 6px 0; color: #ffffff; font-family: monospace; word-break: break-all; overflow-wrap: break-word;">{utr}</td>
                     </tr>
                 </table>
             </div>
             
             <!-- Call to Actions -->
             <div style="margin-bottom: 20px;">
-                <a href="{status_link}" target="_blank" style="display: block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; margin-bottom: 12px; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <a href="{status_link}" target="_blank" style="display: block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; margin-bottom: 12px; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); text-align: center;">
                     Check Status / Live Timeline
                 </a>
                 
-                <div style="display: flex; justify-content: space-between; gap: 10px;">
-                    <a href="{view_link}" target="_blank" style="flex: 1; display: inline-block; background-color: #334155; color: #f1f5f9; text-decoration: none; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; text-align: center; border: 1px solid #475569;">
-                        View Response Copy
-                    </a>
-                    
-                    <a href="{edit_link}" target="_blank" style="flex: 1; display: inline-block; background-color: #334155; color: #f1f5f9; text-decoration: none; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; text-align: center; border: 1px solid #475569;">
-                        Edit Response
-                    </a>
-                </div>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">
+                    <tr>
+                        <td style="width: 48%;">
+                            <a href="{view_link}" target="_blank" style="display: block; background-color: #334155; color: #f1f5f9; text-decoration: none; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; text-align: center; border: 1px solid #475569;">
+                                View Response Copy
+                            </a>
+                        </td>
+                        <td style="width: 4%;"></td>
+                        <td style="width: 48%;">
+                            <a href="{edit_link}" target="_blank" style="display: block; background-color: #334155; color: #f1f5f9; text-decoration: none; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; text-align: center; border: 1px solid #475569;">
+                                Edit Response
+                            </a>
+                        </td>
+                    </tr>
+                </table>
                 
                 {edit_notice}
             </div>

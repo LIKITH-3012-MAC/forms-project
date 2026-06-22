@@ -216,6 +216,137 @@
         inset -2px -2px 6px rgba(255, 255, 255, 0.05),
         inset 2px 2px 6px rgba(0, 0, 0, 0.6);
     }
+
+    /* Premium Ticket UI Styles */
+    .success-alert-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin: 20px 0;
+      color: #34d399;
+      font-size: 13.5px;
+      font-weight: 500;
+      line-height: 1.4;
+      text-align: left;
+    }
+
+    .ticket-container {
+      margin: 28px 0;
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      text-align: left;
+      position: relative;
+    }
+
+    .ticket-header {
+      background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
+      border-bottom: 2px dashed rgba(255, 255, 255, 0.1);
+      padding: 22px 24px;
+      position: relative;
+    }
+
+    /* Ticket side circular cuts */
+    .ticket-header::before, .ticket-header::after {
+      content: '';
+      position: absolute;
+      bottom: -11px;
+      width: 22px;
+      height: 22px;
+      background-color: #0f1115; /* cuts match main body background */
+      border-radius: 50%;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      z-index: 10;
+    }
+    .ticket-header::before {
+      left: -12px;
+    }
+    .ticket-header::after {
+      right: -12px;
+    }
+
+    .ticket-org {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      color: #818cf8;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .ticket-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+      background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .ticket-body {
+      padding: 24px;
+    }
+
+    .ticket-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .ticket-field {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ticket-field.full-width {
+      grid-column: span 2;
+    }
+
+    .ticket-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .ticket-value {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #f1f5f9;
+      word-break: break-all;
+    }
+
+    .ticket-barcode {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 10px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .barcode-svg {
+      height: 48px;
+      width: 85%;
+      margin-bottom: 8px;
+    }
+
+    .barcode-val {
+      font-family: monospace;
+      font-size: 11.5px;
+      color: #64748b;
+      letter-spacing: 0.12em;
+    }
   </style>
   <link rel="stylesheet" href="/assets/theme.css">
 </head>
@@ -229,22 +360,76 @@
     <div class="card">
       <div class="success-icon">✓</div>
       <h1>Response Submitted</h1>
-      <p class="subtitle">
+      <p class="subtitle" style="margin-bottom: 16px;">
         Your registration details were recorded successfully. The organizers are manually reviewing your payment details.
       </p>
 
-      <div class="info-box">
-        <div class="info-row">
-          <span class="info-label">Registration ID</span>
-          <span class="info-val" id="regId">Loading...</span>
+      <!-- Mail Notice Alert -->
+      <div class="success-alert-badge">
+        <span>📧 A submission receipt copy has been sent to your registered email address. Please check your inbox (and spam folder) shortly.</span>
+      </div>
+
+      <!-- Advanced Ticket UI -->
+      <div id="ticketUI" class="ticket-container" style="display: none;">
+        <div class="ticket-header">
+          <div class="ticket-org" id="ticketOrg">Sakra Vision</div>
+          <div class="ticket-title" id="ticketEventName">AI Workshop 2026</div>
         </div>
-        <div class="info-row">
-          <span class="info-label">Payment Status</span>
-          <span class="status-badge" id="paymentStatus">Pending Review</span>
+        <div class="ticket-body">
+          <div class="ticket-row">
+            <div class="ticket-field">
+              <span class="ticket-label">Attendee Name</span>
+              <span class="ticket-value" id="ticketName">...</span>
+            </div>
+            <div class="ticket-field">
+              <span class="ticket-label">Ticket ID</span>
+              <span class="ticket-value" id="ticketId" style="font-family: monospace;">...</span>
+            </div>
+          </div>
+          
+          <div class="ticket-row">
+            <div class="ticket-field">
+              <span class="ticket-label">Email Address</span>
+              <span class="ticket-value" id="ticketEmail">...</span>
+            </div>
+            <div class="ticket-field">
+              <span class="ticket-label">College</span>
+              <span class="ticket-value" id="ticketCollege">...</span>
+            </div>
+          </div>
+          
+          <div class="ticket-row">
+            <div class="ticket-field">
+              <span class="ticket-label">Payment Status</span>
+              <span class="ticket-value" id="ticketStatus" style="font-weight: 700; text-transform: uppercase;">...</span>
+            </div>
+            <div class="ticket-field">
+              <span class="ticket-label">Amount Paid</span>
+              <span class="ticket-value" id="ticketAmount" style="color: #10b981; font-weight: 700;">...</span>
+            </div>
+          </div>
+          
+          <div class="ticket-row">
+            <div class="ticket-field full-width">
+              <span class="ticket-label">Transaction Reference UTR</span>
+              <span class="ticket-value" id="ticketUtr" style="font-family: monospace;">...</span>
+            </div>
+          </div>
+
+          <div class="ticket-barcode">
+            <svg class="barcode-svg" id="barcodeSvg" viewBox="0 0 350 48" preserveAspectRatio="none">
+              <!-- Barcode lines generated dynamically -->
+            </svg>
+            <div class="barcode-val" id="barcodeVal">...</div>
+          </div>
         </div>
       </div>
 
       <div class="btn-stack">
+        <!-- Download Receipt button -->
+        <button id="downloadReceiptBtn" class="neo-btn neo-btn-primary" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #ffffff; border: none; margin-bottom: 8px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.45);">
+          📥 Download Receipt Card
+        </button>
         <a id="checkStatusBtn" class="neo-btn neo-btn-primary" href="#">
           Check Status Timeline
         </a>
@@ -262,7 +447,7 @@
   </main>
 
   <script>
-        const CONFIG = {
+    const CONFIG = {
       BACKEND_URL:
         window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8000"
           : "https://forms-project-1-xe3v.onrender.com"
@@ -277,9 +462,186 @@
     }
 
     const BACKEND_URL = CONFIG.BACKEND_URL;
+    let registrationData = null;
 
     function goProblem(reason) {
       window.location.href = `problem.html?reason=${encodeURIComponent(reason)}`;
+    }
+
+    function generateBarcodeLines(text) {
+      const svg = document.getElementById("barcodeSvg");
+      if (!svg) return;
+      svg.innerHTML = '';
+      let x = 12;
+      const width = 350;
+      const height = 48;
+      
+      const seed = text + "9876543210";
+      let i = 0;
+      while (x < width - 12) {
+        const charCode = seed.charCodeAt(i % seed.length);
+        const lineWidth = (charCode % 3) + 1;
+        const spacing = (charCode % 2) + 2;
+        
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("x", x.toString());
+        rect.setAttribute("y", "0");
+        rect.setAttribute("width", lineWidth.toString());
+        rect.setAttribute("height", height.toString());
+        rect.setAttribute("fill", "rgba(255, 255, 255, 0.75)");
+        svg.appendChild(rect);
+        
+        x += lineWidth + spacing;
+        i++;
+      }
+    }
+
+    async function downloadReceipt() {
+      if (!registrationData) {
+        alert("Receipt data is still loading, please wait...");
+        return;
+      }
+      
+      const canvas = document.createElement("canvas");
+      canvas.width = 800;
+      canvas.height = 1050;
+      const ctx = canvas.getContext("2d");
+      
+      // Background Gradient
+      const grad = ctx.createLinearGradient(0, 0, 800, 1050);
+      grad.addColorStop(0, "#1e1b4b");
+      grad.addColorStop(0.5, "#0b0f19");
+      grad.addColorStop(1, "#2e0f40");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 800, 1050);
+      
+      // Grid overlay
+      ctx.strokeStyle = "rgba(99, 102, 241, 0.04)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 800; i += 40) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1050); ctx.stroke();
+      }
+      for (let j = 0; j < 1050; j += 40) {
+        ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(800, j); ctx.stroke();
+      }
+
+      // Outer border
+      ctx.strokeStyle = "rgba(99, 102, 241, 0.25)";
+      ctx.lineWidth = 6;
+      ctx.strokeRect(16, 16, 768, 1018);
+      
+      // Header Area
+      const headerGrad = ctx.createLinearGradient(0, 0, 800, 0);
+      headerGrad.addColorStop(0, "rgba(99, 102, 241, 0.15)");
+      headerGrad.addColorStop(1, "rgba(168, 85, 247, 0.15)");
+      ctx.fillStyle = headerGrad;
+      ctx.fillRect(20, 20, 760, 160);
+      
+      ctx.beginPath();
+      ctx.setLineDash([8, 8]);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = 2;
+      ctx.moveTo(20, 180);
+      ctx.lineTo(780, 180);
+      ctx.stroke();
+      ctx.setLineDash([]); 
+
+      // Draw notches
+      ctx.fillStyle = "#0f1115";
+      ctx.beginPath(); ctx.arc(16, 180, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(784, 180, 18, 0, Math.PI * 2); ctx.fill();
+      
+      // Header texts
+      ctx.fillStyle = "#818cf8";
+      ctx.font = "800 15px sans-serif";
+      ctx.fillText("SAKRA VISION PRESENTS", 50, 72);
+      
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 32px sans-serif";
+      ctx.fillText(registrationData.event_name || "AI Workshop 2026", 50, 120);
+      
+      ctx.fillStyle = "#c084fc";
+      ctx.font = "bold 15px sans-serif";
+      ctx.fillText("REGISTRATION RECEIPT & TICKET", 50, 152);
+      
+      // Details drawer helper
+      function drawField(label, val, x, y) {
+        ctx.fillStyle = "#64748b";
+        ctx.font = "800 12px sans-serif";
+        ctx.fillText(label.toUpperCase(), x, y);
+        
+        ctx.fillStyle = "#f1f5f9";
+        ctx.font = "bold 18px sans-serif";
+        ctx.fillText(val, x, y + 26);
+      }
+      
+      drawField("Attendee Name", registrationData.full_name, 60, 250);
+      drawField("Ticket ID", registrationData.registration_id, 450, 250);
+      
+      drawField("Email Address", registrationData.email, 60, 350);
+      drawField("College Name", registrationData.college, 450, 350);
+      
+      drawField("Payment Status", registrationData.payment_status.replace("_", " "), 60, 450);
+      drawField("Amount Paid", "₹" + registrationData.amount, 450, 450);
+      
+      drawField("Transaction UTR", registrationData.upi_reference_id, 60, 550);
+      drawField("Date Registered", new Date(registrationData.created_at).toLocaleString(), 450, 550);
+      
+      // Barcode
+      ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+      let bx = 120;
+      const bSeed = registrationData.registration_id + "9876543210";
+      let bi = 0;
+      while (bx < 680) {
+        const charCode = bSeed.charCodeAt(bi % bSeed.length);
+        const lineWidth = (charCode % 3) + 1;
+        const spacing = (charCode % 2) + 3;
+        ctx.fillRect(bx, 660, lineWidth, 65);
+        bx += lineWidth + spacing;
+        bi++;
+      }
+      
+      ctx.fillStyle = "#64748b";
+      ctx.font = "14px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("*" + registrationData.registration_id + "*", 400, 755);
+      ctx.textAlign = "left";
+      
+      // Stamp
+      const isApproved = registrationData.payment_status === "APPROVED";
+      ctx.strokeStyle = isApproved ? "rgba(16, 185, 129, 0.25)" : "rgba(245, 158, 11, 0.25)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(640, 875, 75, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      ctx.fillStyle = isApproved ? "rgba(16, 185, 129, 0.25)" : "rgba(245, 158, 11, 0.25)";
+      ctx.font = "bold 13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("SAKRA VISION", 640, 850);
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText(registrationData.payment_status.replace("_", " "), 640, 878);
+      ctx.font = "bold 10px sans-serif";
+      ctx.fillText("OFFICIAL STAMP", 640, 905);
+      ctx.textAlign = "left";
+      
+      // Footer info
+      ctx.fillStyle = "#475569";
+      ctx.font = "500 13px sans-serif";
+      ctx.fillText("Please present this receipt/ticket at the registration desk for verification.", 60, 950);
+      ctx.fillText("A copy of this confirmation has been sent to your registered email address.", 60, 975);
+      
+      // Trigger download
+      try {
+        const image = canvas.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.download = `Sakra_Receipt_${registrationData.registration_id}.png`;
+        link.href = image;
+        link.click();
+      } catch (err) {
+        console.error("Canvas export failed: ", err);
+        alert("Failed to export receipt image. Please take a screenshot instead.");
+      }
     }
 
     async function loadStatus() {
@@ -292,8 +654,6 @@
         return;
       }
 
-      document.getElementById("regId").innerText = rid || "Pending Allocation";
-
       try {
         const response = await fetch(`${BACKEND_URL}/api/status/${statusToken}`);
         if (!response.ok) {
@@ -302,17 +662,41 @@
         
         const resData = await response.json();
         const data = resData.data;
+        registrationData = data;
 
-        document.getElementById("regId").innerText = data.registration_id;
-        document.getElementById("paymentStatus").innerText = data.payment_status.replace("_", " ");
+        // Populate Ticket elements
+        document.getElementById("ticketName").innerText = data.full_name;
+        document.getElementById("ticketId").innerText = data.registration_id;
+        document.getElementById("ticketEmail").innerText = data.email;
+        document.getElementById("ticketCollege").innerText = data.college;
+        document.getElementById("ticketStatus").innerText = data.payment_status.replace("_", " ");
+        document.getElementById("ticketAmount").innerText = "₹" + data.amount;
+        document.getElementById("ticketUtr").innerText = data.upi_reference_id;
+        document.getElementById("barcodeVal").innerText = data.registration_id;
+        
+        // Show ticket
+        document.getElementById("ticketUI").style.display = "block";
+        
+        // Generate pseudo barcode lines
+        generateBarcodeLines(data.registration_id);
 
         // Configure actions links
         document.getElementById("checkStatusBtn").href = `status.html?token=${statusToken}`;
         document.getElementById("viewResponseBtn").href = `view-response.html?token=${data.view_token}`;
         document.getElementById("editResponseBtn").href = `edit-response.html?token=${data.edit_token}`;
+        
+        // Setup download listener
+        const downloadBtn = document.getElementById("downloadReceiptBtn");
+        if (downloadBtn) {
+          downloadBtn.addEventListener("click", downloadReceipt);
+        }
       } catch (err) {
         console.error(err);
-        showToast("Error retrieving registration details", "danger");
+        if (typeof showToast === "function") {
+          showToast("Error retrieving registration details", "danger");
+        } else {
+          alert("Error retrieving registration details");
+        }
       }
     }
 
