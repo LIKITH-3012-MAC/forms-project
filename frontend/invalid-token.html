@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+  const CONFIG = {
+    BACKEND_URL:
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+        ? "http://localhost:8000"
+        : "https://forms-project-1-xe3v.onrender.com"
+  };
+
+  if (
+    !window.location.hostname.includes("localhost") &&
+    CONFIG.BACKEND_URL.includes("localhost")
+  ) {
+    window.location.href = "/problem.html?reason=production_backend_url_misconfigured";
+  }
+</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Invalid Token Signature - SAKRA VISION</title>

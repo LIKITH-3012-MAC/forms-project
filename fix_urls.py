@@ -9,7 +9,7 @@ CONFIG_SCRIPT = """<script>
       window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1"
         ? "http://localhost:8000"
-        : "https://YOUR-RENDER-BACKEND-DOMAIN.onrender.com"
+        : "https://forms-project-1-xe3v.onrender.com"
   };
 
   if (
@@ -38,8 +38,8 @@ for filename in os.listdir(FRONTEND_DIR):
     # Alternatively, replace "http://localhost:8000" with CONFIG.BACKEND_URL (as string concat).
     
     # We will use string concatenation to be safe: CONFIG.BACKEND_URL + "/api..."
-    content = re.sub(r'["\']http://localhost:8000', 'CONFIG.BACKEND_URL + "', content)
-    content = re.sub(r'["\']http://127.0.0.1:8000', 'CONFIG.BACKEND_URL + "', content)
+    content = re.sub(r'["\']http://localhost:8000(?!["\'])', 'CONFIG.BACKEND_URL + "', content)
+    content = re.sub(r'["\']http://127.0.0.1:8000(?!["\'])', 'CONFIG.BACKEND_URL + "', content)
 
     # Clean up double string concat if it happens: CONFIG.BACKEND_URL + "" + ...
     content = content.replace('CONFIG.BACKEND_URL + ""', 'CONFIG.BACKEND_URL')
