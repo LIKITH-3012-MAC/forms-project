@@ -160,7 +160,7 @@ def is_deadline_passed() -> bool:
         print(f"Deadline date parsing failed: {e}")
         return False
 
-# Dependency: Verify admin token from Authorization header or cookie (excluding query params)
+# Dependency: Verify admin token from Authorization header, cookie, or query param
 def verify_admin_token(request: Request) -> str:
     auth_header = request.headers.get("authorization")
     token = None
@@ -172,6 +172,9 @@ def verify_admin_token(request: Request) -> str:
         
     if not token:
         token = request.cookies.get("admin_session")
+
+    if not token:
+        token = request.query_params.get("token")
 
     if not token:
         raise HTTPException(status_code=401, detail="Unauthorized: No admin token provided.")
