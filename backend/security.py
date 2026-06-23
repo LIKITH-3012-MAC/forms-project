@@ -1,5 +1,6 @@
 from typing import Optional
 from itsdangerous import URLSafeSerializer, BadSignature
+import bcrypt
 import config
 
 # Create serializer using SECRET_KEY from config
@@ -17,3 +18,17 @@ def verify_session(signed_data: str) -> Optional[str]:
         return serializer.loads(signed_data)
     except BadSignature:
         return None
+
+def hash_password(password: str) -> str:
+    """Hashes a plain text password using bcrypt."""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+def verify_password(password: str, hashed_password: str) -> bool:
+    """Verifies a plain text password against a hashed bcrypt password."""
+    if not hashed_password:
+        return False
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except Exception:
+        return False

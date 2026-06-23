@@ -78,6 +78,15 @@ class RegistrationAuditLog(Base):
     ip_address = Column(String(45), nullable=True)
     created_at = Column(DateTime, default=get_ist_time)
 
+    # Rich fields for multi-admin action tracking
+    actor_user_id = Column(Integer, nullable=True)
+    actor_email = Column(String(150), nullable=True)
+    actor_role = Column(String(50), nullable=True)
+    action_type = Column(String(100), nullable=True)
+    action_message = Column(Text, nullable=True)
+    changes_json = Column(Text, nullable=True)
+    user_agent = Column(Text, nullable=True)
+
 
 class EmailLog(Base):
     __tablename__ = "email_logs"
@@ -104,3 +113,17 @@ class ProblemLog(Base):
     ip_address = Column(String(45), nullable=True)
     exception_type = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=get_ist_time)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    email = Column(String(150), unique=True, index=True, nullable=False)
+    passwordHash = Column(String(255), nullable=False)
+    role = Column(String(50), default="USER_WITH_FULL_ACCESS", nullable=False) # ADMIN, USER_WITH_FULL_ACCESS
+    enabled = Column(Boolean, default=True, nullable=False)
+    createdByAdmin = Column(Boolean, default=True, nullable=False)
+    mustChangePassword = Column(Boolean, default=True, nullable=False)
+    createdAt = Column(DateTime, default=get_ist_time)
+    updatedAt = Column(DateTime, default=get_ist_time, onupdate=get_ist_time)

@@ -215,12 +215,32 @@
       <h1>Administrative Console</h1>
       <p class="subtitle">Access controls for registration management portal</p>
  
+      <!-- Tabs for Login Type -->
+      <div class="login-tabs" style="display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+        <button type="button" id="tabSecretKey" class="tab-btn active" onclick="switchTab('secret')" style="flex: 1; background: none; border: none; color: #ffffff; font-size: 13px; font-weight: 600; padding: 8px 0; cursor: pointer; border-bottom: 2px solid var(--primary); transition: all 0.3s;">Secret Key</button>
+        <button type="button" id="tabEmailPassword" class="tab-btn" onclick="switchTab('email')" style="flex: 1; background: none; border: none; color: var(--text-muted); font-size: 13px; font-weight: 500; padding: 8px 0; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s;">Email & Password</button>
+      </div>
+
       <form id="loginForm" onsubmit="handleLogin(event)">
-        <div class="form-group">
+        <!-- Secret Key Group -->
+        <div class="form-group" id="secretKeyGroup">
           <label for="password">Admin Secret Key</label>
-          <input type="password" id="password" required placeholder="••••••••••••••••" />
-          <div class="error-msg" id="loginError">Incorrect administrative password credential.</div>
+          <input type="password" id="password" placeholder="••••••••••••••••" />
         </div>
+        
+        <!-- Email & Password Group (Hidden by default) -->
+        <div id="emailPasswordGroup" style="display: none;">
+          <div class="form-group">
+            <label for="emailInput">Email Address</label>
+            <input type="email" id="emailInput" placeholder="admin@example.com" />
+          </div>
+          <div class="form-group">
+            <label for="passwordInput">Password</label>
+            <input type="password" id="passwordInput" placeholder="••••••••" />
+          </div>
+        </div>
+ 
+        <div class="error-msg" id="loginError" style="margin-bottom: 16px;">Incorrect administrative credentials.</div>
  
         <button type="submit" class="neo-btn neo-btn-primary" id="loginBtn">
           Authenticate &rarr;
@@ -228,6 +248,29 @@
       </form>
     </div>
   </main>
+
+  <!-- Force Change Password Modal -->
+  <div id="changePasswordModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 17, 21, 0.95); z-index: 1000; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(10px);">
+    <div class="card" style="width: 100%; max-width: 400px; border-radius: 24px; padding: 40px 32px; border: 1px solid var(--border-color); background: var(--card-bg);">
+      <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 8px; text-align: center; color: #ffffff;">Update Password</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px; text-align: center;">You are logging in for the first time. For security reasons, you must change your temporary password.</p>
+      
+      <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
+        <div class="form-group">
+          <label for="newPassword">New Password (min 6 characters)</label>
+          <input type="password" id="newPassword" required minlength="6" placeholder="••••••••" style="width: 100%; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 14px 16px; font-size: 14px; color: #ffffff;" />
+        </div>
+        <div class="form-group">
+          <label for="confirmNewPassword">Confirm New Password</label>
+          <input type="password" id="confirmNewPassword" required minlength="6" placeholder="••••••••" style="width: 100%; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 14px 16px; font-size: 14px; color: #ffffff;" />
+        </div>
+        <div class="error-msg" id="changePasswordError" style="margin-bottom: 16px; color: var(--danger); font-size: 12px; display: none; text-align: center;">Passwords do not match.</div>
+        <button type="submit" class="neo-btn neo-btn-primary" id="changePasswordBtn" style="width: 100%;">
+          Save & Access Dashboard &rarr;
+        </button>
+      </form>
+    </div>
+  </div>
  
   <script src="/assets/theme.js"></script>
   <script>
@@ -244,39 +287,138 @@
     ) {
       window.location.href = "/problem.html?reason=production_backend_url_misconfigured";
     }
+
+    let currentLoginMode = 'secret';
+
+    function switchTab(mode) {
+      currentLoginMode = mode;
+      const tabSecret = document.getElementById("tabSecretKey");
+      const tabEmail = document.getElementById("tabEmailPassword");
+      const secretGroup = document.getElementById("secretKeyGroup");
+      const emailGroup = document.getElementById("emailPasswordGroup");
+      
+      if (mode === 'secret') {
+        tabSecret.style.borderBottomColor = "var(--primary)";
+        tabSecret.style.color = "#ffffff";
+        tabEmail.style.borderBottomColor = "transparent";
+        tabEmail.style.color = "var(--text-muted)";
+        
+        secretGroup.style.display = "block";
+        emailGroup.style.display = "none";
+        
+        document.getElementById("password").required = true;
+        document.getElementById("emailInput").required = false;
+        document.getElementById("passwordInput").required = false;
+      } else {
+        tabEmail.style.borderBottomColor = "var(--primary)";
+        tabEmail.style.color = "#ffffff";
+        tabSecret.style.borderBottomColor = "transparent";
+        tabSecret.style.color = "var(--text-muted)";
+        
+        secretGroup.style.display = "none";
+        emailGroup.style.display = "block";
+        
+        document.getElementById("password").required = false;
+        document.getElementById("emailInput").required = true;
+        document.getElementById("passwordInput").required = true;
+      }
+    }
  
     async function handleLogin(e) {
       e.preventDefault();
-      const pwd = document.getElementById("password").value;
       const btn = document.getElementById("loginBtn");
       const errEl = document.getElementById("loginError");
+      errEl.style.display = "none";
+      
+      let payload = {};
+      if (currentLoginMode === 'secret') {
+        const pwd = document.getElementById("password").value;
+        payload = { admin_password: pwd };
+      } else {
+        const email = document.getElementById("emailInput").value;
+        const password = document.getElementById("passwordInput").value;
+        payload = { email: email, password: password };
+      }
  
       setButtonLoading(btn, "Verifying...");
-      errEl.style.display = "none";
  
       try {
         const data = await apiFetch("/api/admin/login", {
           method: "POST",
-          body: JSON.stringify({ admin_password: pwd })
+          body: JSON.stringify(payload)
         });
  
         // Store session token in local storage
         localStorage.setItem("admin_token", data.admin_token);
+        localStorage.setItem("admin_email", data.email || "superadmin");
+        localStorage.setItem("admin_role", data.role || "ADMIN");
         
-        markButtonSuccess(btn, "Success ✅");
-        setTimeout(() => {
-          window.location.href = "admin-dashboard.html";
-        }, 600);
+        if (data.must_change_password) {
+          // Show force password modal
+          document.getElementById("changePasswordModal").style.display = "flex";
+          markButtonSuccess(btn, "Success ✅");
+        } else {
+          markButtonSuccess(btn, "Success ✅");
+          setTimeout(() => {
+            window.location.href = "admin-dashboard.html";
+          }, 600);
+        }
       } catch (error) {
         console.error(error);
-        errEl.innerText = error.message || "Incorrect administrative password credential.";
+        errEl.innerText = error.message || "Incorrect administrative credentials.";
         errEl.style.display = "block";
         markButtonError(btn, "Failed");
       }
     }
 
+    async function handleChangePassword(e) {
+      e.preventDefault();
+      const newPwd = document.getElementById("newPassword").value;
+      const confirmPwd = document.getElementById("confirmNewPassword").value;
+      const btn = document.getElementById("changePasswordBtn");
+      const errEl = document.getElementById("changePasswordError");
+      errEl.style.display = "none";
+      
+      if (newPwd !== confirmPwd) {
+        errEl.innerText = "Passwords do not match.";
+        errEl.style.display = "block";
+        return;
+      }
+      
+      setButtonLoading(btn, "Updating...");
+      const token = localStorage.getItem("admin_token");
+      
+      try {
+        const response = await fetch(`${CONFIG.BACKEND_URL}/api/admin/users/change-password`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ password: newPwd })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || "Failed to update password.");
+        }
+        
+        markButtonSuccess(btn, "Saved ✅");
+        setTimeout(() => {
+          window.location.href = "admin-dashboard.html";
+        }, 800);
+      } catch (error) {
+        console.error(error);
+        errEl.innerText = error.message || "Failed to update password.";
+        errEl.style.display = "block";
+        markButtonError(btn, "Failed");
+      }
+    }
+ 
     // Auto redirect if token already present
     window.addEventListener("DOMContentLoaded", () => {
+      // Set default tab on load
+      switchTab('secret');
       if (localStorage.getItem("admin_token")) {
         window.location.href = "admin-dashboard.html";
       }

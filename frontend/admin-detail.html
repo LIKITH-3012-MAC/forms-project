@@ -666,14 +666,30 @@
           auditEl.innerHTML = `<div style="padding: 10px; color: var(--text-muted);">No audit trails logged yet.</div>`;
         } else {
           data.audits.forEach(a => {
+            let actorDisplay = a.performed_by.toUpperCase();
+            if (a.actor_email) {
+              actorDisplay = `${a.actor_role || 'ADMIN'} (${a.actor_email})`;
+            }
+
+            let changesHtml = '';
+            if (a.new_data && a.new_data !== "{}") {
+                changesHtml = `<div class="log-desc" style="margin-top: 4px;">Changes: <span style="font-family: monospace; font-size: 11px;">${escapeHtml(a.new_data)}</span></div>`;
+            }
+
+            let messageHtml = '';
+            if (a.action_message) {
+                messageHtml = `<div class="log-desc" style="color: var(--warning); margin-top: 4px; border-left: 2px solid var(--warning); padding-left: 8px;">Note: ${escapeHtml(a.action_message)}</div>`;
+            }
+
             auditEl.innerHTML += `
               <div class="log-item">
                 <div class="log-meta">
-                  <span>${a.performed_by.toUpperCase()} (IP: ${a.ip_address})</span>
+                  <span style="color: ${a.actor_role === 'ADMIN' ? 'var(--primary)' : 'inherit'}; font-weight: ${a.actor_role === 'ADMIN' ? '600' : 'normal'}">${actorDisplay} <span style="color: var(--text-muted); font-weight: normal;">(IP: ${a.ip_address})</span></span>
                   <span>${a.created_at}</span>
                 </div>
-                <div class="log-action">${a.action}</div>
-                <div class="log-desc">Changes: ${escapeHtml(a.new_data)}</div>
+                <div class="log-action" style="margin-top: 4px;">${a.action_type ? a.action_type.toUpperCase().replace("-", " ") : a.action}</div>
+                ${changesHtml}
+                ${messageHtml}
               </div>
             `;
           });

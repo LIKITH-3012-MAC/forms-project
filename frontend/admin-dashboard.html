@@ -315,6 +315,96 @@
       to { transform: translateX(0); opacity: 1; }
     }
 
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .modal {
+      background: #1e222b;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 500px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .close-modal {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .close-modal:hover { color: #fff; }
+    
+    .modal-tabs {
+      display: flex;
+      gap: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 20px;
+    }
+    .modal-tab {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 10px 0;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .modal-tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .users-table-container {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+    }
+    .users-table-container table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .users-table-container th, .users-table-container td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .users-table-container th {
+      background: rgba(255,255,255,0.02);
+      color: var(--text-muted);
+      position: sticky;
+      top: 0;
+    }
 
   </style>
   <link rel="stylesheet" href="/assets/performance.css">
@@ -325,6 +415,7 @@
       SAKRA VISION <span>Admin Panel</span>
     </div>
     <div class="admin-controls">
+      <button class="neo-btn neo-btn-primary" id="adminControlBtn" style="display: none;" onclick="openAdminModal()">Admin Control ⚙️</button>
       <a href="/admin-analytics.html" class="neo-btn neo-btn-primary">View Graphs 📊</a>
       <button class="neo-btn neo-btn-secondary" id="exportBtn" onclick="exportCSV()">Export CSV</button>
       <button class="neo-btn neo-btn-secondary" onclick="handleLogout()">Logout</button>
@@ -414,6 +505,57 @@
       </div>
     </div>
   </main>
+
+  <div class="modal-overlay" id="adminControlModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Admin Control</h2>
+        <button class="close-modal" onclick="closeAdminModal()">&times;</button>
+      </div>
+      <div class="modal-tabs">
+        <button class="modal-tab active" id="tabCreateUser" onclick="switchAdminTab('create')">Create User</button>
+        <button class="modal-tab" id="tabManageUsers" onclick="switchAdminTab('manage')">Manage Users</button>
+      </div>
+      
+      <!-- Create User Tab -->
+      <div id="createUserSection">
+        <form onsubmit="handleCreateUser(event)">
+          <div class="form-group">
+            <label>User Email</label>
+            <input type="email" id="newAdminEmail" required placeholder="admin@sakravision.com" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="newAdminPassword" required placeholder="Temporary secure password" />
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">User will be forced to change this password on their first login.</p>
+          </div>
+          <button type="submit" class="neo-btn neo-btn-primary" id="createUserBtn" style="width: 100%; margin-top: 10px;">Create User</button>
+          <div id="createUserError" style="color: var(--danger); font-size: 12px; margin-top: 10px; display: none;"></div>
+        </form>
+      </div>
+
+      <!-- Manage Users Tab -->
+      <div id="manageUsersSection" style="display: none;">
+        <div class="users-table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="adminUsersList">
+              <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">Loading users...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="toast-container" id="toastContainer"></div>
 
@@ -668,8 +810,128 @@
         .replace(/'/g, "&#039;");
     }
 
+    // Admin Control Logic
+    function openAdminModal() {
+      document.getElementById("adminControlModal").style.display = "flex";
+      switchAdminTab("create");
+    }
+
+    function closeAdminModal() {
+      document.getElementById("adminControlModal").style.display = "none";
+    }
+
+    function switchAdminTab(tab) {
+      document.getElementById("tabCreateUser").classList.remove("active");
+      document.getElementById("tabManageUsers").classList.remove("active");
+      document.getElementById("createUserSection").style.display = "none";
+      document.getElementById("manageUsersSection").style.display = "none";
+
+      if (tab === "create") {
+        document.getElementById("tabCreateUser").classList.add("active");
+        document.getElementById("createUserSection").style.display = "block";
+      } else {
+        document.getElementById("tabManageUsers").classList.add("active");
+        document.getElementById("manageUsersSection").style.display = "block";
+        loadAdminUsers();
+      }
+    }
+
+    async function handleCreateUser(e) {
+      e.preventDefault();
+      const email = document.getElementById("newAdminEmail").value;
+      const password = document.getElementById("newAdminPassword").value;
+      const btn = document.getElementById("createUserBtn");
+      const errEl = document.getElementById("createUserError");
+      errEl.style.display = "none";
+
+      setButtonLoading(btn, "Creating...");
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/users`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${adminToken}`
+          },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Failed to create user");
+
+        showToast("User created successfully. Email sent.", "success");
+        markButtonSuccess(btn, "Created ✅");
+        document.getElementById("newAdminEmail").value = "";
+        document.getElementById("newAdminPassword").value = "";
+        setTimeout(() => {
+          btn.innerText = "Create User";
+          btn.disabled = false;
+        }, 2000);
+      } catch (err) {
+        errEl.innerText = err.message;
+        errEl.style.display = "block";
+        markButtonError(btn, "Failed");
+      }
+    }
+
+    async function loadAdminUsers() {
+      const list = document.getElementById("adminUsersList");
+      list.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">Loading users...</td></tr>`;
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/users`, {
+          headers: { "Authorization": `Bearer ${adminToken}` }
+        });
+        const users = await response.json();
+        if (!response.ok) throw new Error("Failed to load users");
+        
+        list.innerHTML = "";
+        if (users.length === 0) {
+           list.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">No users found.</td></tr>`;
+           return;
+        }
+
+        users.forEach(u => {
+          const isMe = u.email === localStorage.getItem("admin_email");
+          const toggleText = u.enabled ? "Disable" : "Enable";
+          const toggleAction = `toggleUserStatus(${u.id}, ${!u.enabled})`;
+          list.innerHTML += `
+            <tr>
+              <td>${escapeHtml(u.email)}</td>
+              <td><span class="badge badge-PENDING_REVIEW">${u.role}</span></td>
+              <td>${u.enabled ? '<span style="color:var(--success)">Active</span>' : '<span style="color:var(--danger)">Disabled</span>'}</td>
+              <td>
+                ${!isMe ? `<button class="neo-btn neo-btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="${toggleAction}">${toggleText}</button>` : ''}
+              </td>
+            </tr>
+          `;
+        });
+      } catch (err) {
+        list.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--danger); padding: 20px;">Failed to load.</td></tr>`;
+      }
+    }
+
+    async function toggleUserStatus(userId, enabled) {
+      if(!confirm(`Are you sure you want to ${enabled ? 'enable' : 'disable'} this user?`)) return;
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/users/${userId}/status`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${adminToken}`
+          },
+          body: JSON.stringify({ enabled })
+        });
+        if (!response.ok) throw new Error("Failed to change status");
+        showToast("User status updated", "success");
+        loadAdminUsers();
+      } catch (err) {
+        showToast(err.message, "danger");
+      }
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
       checkAuth();
+      if (localStorage.getItem("admin_role") === "ADMIN") {
+        document.getElementById("adminControlBtn").style.display = "inline-flex";
+      }
       loadData();
     });
   </script>

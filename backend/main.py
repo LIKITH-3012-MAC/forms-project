@@ -112,6 +112,23 @@ try:
             conn.execute(text("ALTER TABLE event_registrations ADD COLUMN ai_receipt_checked_at DATETIME"))
             print("✓ Migration: Added ai_receipt_checked_at to event_registrations.")
             
+        # Audit logs migration
+        result_audit = conn.execute(text("SHOW COLUMNS FROM registration_audit_logs"))
+        existing_audit_cols = [row[0].lower() for row in result_audit.fetchall()]
+        audit_cols_to_add = {
+            "actor_user_id": "INT NULL",
+            "actor_email": "VARCHAR(150) NULL",
+            "actor_role": "VARCHAR(50) NULL",
+            "action_type": "VARCHAR(100) NULL",
+            "action_message": "TEXT NULL",
+            "changes_json": "TEXT NULL",
+            "user_agent": "TEXT NULL"
+        }
+        for col, col_type in audit_cols_to_add.items():
+            if col not in existing_audit_cols:
+                conn.execute(text(f"ALTER TABLE registration_audit_logs ADD COLUMN {col} {col_type}"))
+                print(f"✓ Migration: Added {col} to registration_audit_logs.")
+            
         conn.commit()
 except Exception as e:
     print(f"Skipping MySQL schema migrations: {e}")
@@ -161,7 +178,7 @@ def is_deadline_passed() -> bool:
         return False
 
 # Dependency: Verify admin token from Authorization header, cookie, or query param
-def verify_admin_token(request: Request) -> str:
+def verify_admin_token(request: Request, db: Session = Depends(get_db)) -> dict:
     auth_header = request.headers.get("authorization")
     token = None
     if auth_header and auth_header.lower().startswith("bearer "):
@@ -179,10 +196,44 @@ def verify_admin_token(request: Request) -> str:
     if not token:
         raise HTTPException(status_code=401, detail="Unauthorized: No admin token provided.")
         
-    user_id = security.verify_session(token)
-    if user_id != "admin_authenticated":
+    session_data = security.verify_session(token)
+    if not session_data:
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid admin token.")
-    return user_id
+        
+    if session_data == "admin_authenticated":
+        return {
+            "user_id": None,
+            "email": "superadmin",
+            "role": "ADMIN",
+            "must_change_password": False
+        }
+        
+    if isinstance(session_data, str) and session_data.startswith("user_authenticated:"):
+        parts = session_data.split(":")
+        if len(parts) >= 4:
+            email = parts[1]
+            role = parts[2]
+            user_id = int(parts[3])
+            
+            user = db.query(models.User).filter(models.User.id == user_id).first()
+            if not user or not user.enabled:
+                raise HTTPException(status_code=401, detail="Unauthorized: User is disabled or does not exist.")
+            
+            path = request.url.path
+            if user.mustChangePassword and not path.endswith("/api/admin/users/change-password"):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Password change required: You must change your password before performing administrative actions."
+                )
+                
+            return {
+                "user_id": user.id,
+                "email": user.email,
+                "role": user.role,
+                "must_change_password": user.mustChangePassword
+            }
+            
+    raise HTTPException(status_code=401, detail="Unauthorized: Invalid admin token.")
 
 # Helper: Get client IP
 def get_client_ip(request: Request) -> str:
@@ -755,7 +806,14 @@ async def register_attendee(
             action="SUBMITTED",
             new_data=json.dumps(audit_data),
             performed_by="user",
-            ip_address=client_ip
+            ip_address=client_ip,
+            actor_user_id=None,
+            actor_email=None,
+            actor_role="USER",
+            action_type="SUBMITTED",
+            action_message="Registrant submitted response for registration",
+            changes_json=json.dumps(audit_data),
+            user_agent=user_agent
         )
         db.add(audit_log)
         db.commit()
@@ -1014,13 +1072,21 @@ async def update_registration(
         "upi_reference_id": upi_reference_id,
         "new_screenshot_uploaded": new_screenshot_provided
     }
+    user_agent = request.headers.get("user-agent", "Unknown")
     audit_log = models.RegistrationAuditLog(
         registration_id=reg.registration_id,
         action="EDITED",
         old_data=json.dumps(old_data),
         new_data=json.dumps(new_data),
         performed_by="user",
-        ip_address=client_ip
+        ip_address=client_ip,
+        actor_user_id=None,
+        actor_email=None,
+        actor_role="USER",
+        action_type="EDITED",
+        action_message="Registrant updated their registration details",
+        changes_json=json.dumps({"old_data": old_data, "new_data": new_data}),
+        user_agent=user_agent
     )
     db.add(audit_log)
     db.commit()
@@ -1038,15 +1104,181 @@ async def update_registration(
 # --- ADMINISTRATIVE API ENDPOINTS ---
 
 @app.post("/api/admin/login")
-async def admin_login(payload: schemas.AdminLogin):
-    """Process admin password authentication and return token."""
-    if payload.admin_password != config.ADMIN_SECRET:
-        raise HTTPException(status_code=401, detail="Incorrect admin secret credentials.")
+async def admin_login(payload: schemas.AdminLogin, db: Session = Depends(get_db)):
+    """Process admin password or email/password authentication and return token."""
+    # 1. Secret key login (legacy / super admin)
+    if payload.admin_password is not None and payload.admin_password.strip() != "":
+        if payload.admin_password != config.ADMIN_SECRET:
+            raise HTTPException(status_code=401, detail="Incorrect admin secret credentials.")
 
-    session_token = security.sign_session("admin_authenticated")
+        session_token = security.sign_session("admin_authenticated")
+        return {
+            "success": True,
+            "admin_token": session_token,
+            "role": "ADMIN",
+            "email": "superadmin",
+            "must_change_password": False
+        }
+
+    # 2. Email & Password login for admin-created users
+    if not payload.email or not payload.password:
+        raise HTTPException(
+            status_code=400, 
+            detail="Either Admin Secret Key or Email & Password must be provided."
+        )
+
+    # Check database
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+    if not user.enabled:
+        raise HTTPException(status_code=401, detail="This account has been disabled.")
+
+    # Verify password hash
+    if not security.verify_password(payload.password, user.passwordHash):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+    # Generate token
+    session_token = security.sign_session(f"user_authenticated:{user.email}:{user.role}:{user.id}")
     return {
         "success": True,
-        "admin_token": session_token
+        "admin_token": session_token,
+        "role": user.role,
+        "email": user.email,
+        "must_change_password": user.mustChangePassword
+    }
+
+# --- User Management API Endpoints ---
+
+@app.post("/api/admin/users/create")
+async def create_admin_user(
+    payload: schemas.UserCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin_auth: dict = Depends(verify_admin_token)
+):
+    """Create a new administrative user with full privileges (admin only)."""
+    # Only superadmin or admin role can create new users
+    if admin_auth["role"] != "ADMIN":
+        raise HTTPException(status_code=403, detail="Forbidden: Admin access required.")
+
+    # Check if user already exists
+    existing_user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User with this email already exists.")
+
+    # Hash the password
+    password_hash = security.hash_password(payload.password)
+
+    # Save user to DB
+    new_user = models.User(
+        email=payload.email,
+        passwordHash=password_hash,
+        role="USER_WITH_FULL_ACCESS",
+        enabled=True,
+        createdByAdmin=True,
+        mustChangePassword=True
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    # Send credentials email in background
+    background_tasks.add_task(
+        email_service.send_admin_user_credentials_email,
+        payload.email,
+        payload.password,
+        db
+    )
+
+    return {
+        "success": True,
+        "message": "User created successfully and login credentials sent to their email.",
+        "user": {
+            "id": new_user.id,
+            "email": new_user.email,
+            "role": new_user.role,
+            "enabled": new_user.enabled,
+            "must_change_password": new_user.mustChangePassword
+        }
+    }
+
+
+@app.get("/api/admin/users")
+async def list_admin_users(
+    db: Session = Depends(get_db),
+    admin_auth: dict = Depends(verify_admin_token)
+):
+    """Retrieve list of all admin-created users (admin only)."""
+    if admin_auth["role"] != "ADMIN":
+        raise HTTPException(status_code=403, detail="Forbidden: Admin access required.")
+
+    users = db.query(models.User).order_by(models.User.id.desc()).all()
+    return {
+        "success": True,
+        "users": [
+            {
+                "id": u.id,
+                "email": u.email,
+                "role": u.role,
+                "enabled": u.enabled,
+                "must_change_password": u.mustChangePassword,
+                "created_at": u.createdAt.strftime("%Y-%m-%d %H:%M:%S") if u.createdAt else None
+            }
+            for u in users
+        ]
+    }
+
+
+@app.patch("/api/admin/users/{user_id}/status")
+async def update_user_status(
+    user_id: int,
+    payload: schemas.UserStatusUpdate,
+    db: Session = Depends(get_db),
+    admin_auth: dict = Depends(verify_admin_token)
+):
+    """Enable or disable an admin-created user (admin only)."""
+    if admin_auth["role"] != "ADMIN":
+        raise HTTPException(status_code=403, detail="Forbidden: Admin access required.")
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    user.enabled = payload.enabled
+    db.commit()
+
+    action_str = "enabled" if payload.enabled else "disabled"
+    return {
+        "success": True,
+        "message": f"User account has been {action_str} successfully."
+    }
+
+
+@app.post("/api/admin/users/change-password")
+async def change_user_password(
+    payload: schemas.UserChangePassword,
+    db: Session = Depends(get_db),
+    admin_auth: dict = Depends(verify_admin_token)
+):
+    """Force password update for the currently logged in user."""
+    # Ensure they have a valid user ID (legacy superadmin doesn't need to change password in DB)
+    if admin_auth["user_id"] is None:
+        raise HTTPException(status_code=400, detail="Cannot change password for default superadmin.")
+
+    user = db.query(models.User).filter(models.User.id == admin_auth["user_id"]).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    # Update password and flag
+    user.passwordHash = security.hash_password(payload.password)
+    user.mustChangePassword = False
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Password changed successfully. You now have full access."
     }
 
 @app.get("/api/admin/registrations")
@@ -1206,7 +1438,14 @@ async def admin_registration_detail(
         "new_data": a.new_data,
         "performed_by": a.performed_by,
         "ip_address": a.ip_address,
-        "created_at": a.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        "created_at": a.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "actor_user_id": a.actor_user_id,
+        "actor_email": a.actor_email,
+        "actor_role": a.actor_role,
+        "action_type": a.action_type,
+        "action_message": a.action_message,
+        "changes_json": a.changes_json,
+        "user_agent": a.user_agent
     } for a in audits]
 
     emails_data = [{
@@ -1267,7 +1506,7 @@ async def admin_approve_payment(
     request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    admin_auth: str = Depends(verify_admin_token)
+    admin_auth: dict = Depends(verify_admin_token)
 ):
     """Approves registration payment manually and sends confirmation."""
     reg = db.query(models.EventRegistration).filter(
@@ -1298,13 +1537,26 @@ async def admin_approve_payment(
     db.refresh(reg)
 
     client_ip = get_client_ip(request)
+    actor_email = admin_auth.get("email")
+    actor_role = admin_auth.get("role")
+    actor_user_id = admin_auth.get("user_id")
+    user_agent = request.headers.get("user-agent", "Unknown")
+    performed_by = f"{actor_role}: {actor_email}"
+
     audit = models.RegistrationAuditLog(
         registration_id=registration_id,
         action="APPROVED",
         old_data=json.dumps({"payment_status": old_status}),
         new_data=json.dumps({"payment_status": "APPROVED", "admin_note": reg.admin_note}),
-        performed_by="admin",
-        ip_address=client_ip
+        performed_by=performed_by,
+        ip_address=client_ip,
+        actor_user_id=actor_user_id,
+        actor_email=actor_email,
+        actor_role=actor_role,
+        action_type="APPROVED",
+        action_message=f"{actor_email} approved payment for {registration_id}",
+        changes_json=json.dumps({"payment_status": "APPROVED", "admin_note": reg.admin_note}),
+        user_agent=user_agent
     )
     db.add(audit)
     db.commit()
@@ -1327,7 +1579,7 @@ async def admin_reject_payment(
     request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    admin_auth: str = Depends(verify_admin_token)
+    admin_auth: dict = Depends(verify_admin_token)
 ):
     """Rejects registration payment manually."""
     reg = db.query(models.EventRegistration).filter(
@@ -1350,13 +1602,26 @@ async def admin_reject_payment(
     db.refresh(reg)
 
     client_ip = get_client_ip(request)
+    actor_email = admin_auth.get("email")
+    actor_role = admin_auth.get("role")
+    actor_user_id = admin_auth.get("user_id")
+    user_agent = request.headers.get("user-agent", "Unknown")
+    performed_by = f"{actor_role}: {actor_email}"
+
     audit = models.RegistrationAuditLog(
         registration_id=registration_id,
         action="REJECTED",
         old_data=json.dumps({"payment_status": old_status}),
         new_data=json.dumps({"payment_status": "REJECTED", "admin_note": reg.admin_note}),
-        performed_by="admin",
-        ip_address=client_ip
+        performed_by=performed_by,
+        ip_address=client_ip,
+        actor_user_id=actor_user_id,
+        actor_email=actor_email,
+        actor_role=actor_role,
+        action_type="REJECTED",
+        action_message=f"{actor_email} rejected payment for {registration_id}",
+        changes_json=json.dumps({"payment_status": "REJECTED", "admin_note": reg.admin_note}),
+        user_agent=user_agent
     )
     db.add(audit)
     db.commit()
@@ -1379,7 +1644,7 @@ async def admin_mark_correction(
     request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    admin_auth: str = Depends(verify_admin_token)
+    admin_auth: dict = Depends(verify_admin_token)
 ):
     """Marks registration as needs correction, unlocking edits."""
     reg = db.query(models.EventRegistration).filter(
@@ -1400,13 +1665,26 @@ async def admin_mark_correction(
     db.refresh(reg)
 
     client_ip = get_client_ip(request)
+    actor_email = admin_auth.get("email")
+    actor_role = admin_auth.get("role")
+    actor_user_id = admin_auth.get("user_id")
+    user_agent = request.headers.get("user-agent", "Unknown")
+    performed_by = f"{actor_role}: {actor_email}"
+
     audit = models.RegistrationAuditLog(
         registration_id=registration_id,
         action="NEEDS_CORRECTION",
         old_data=json.dumps({"payment_status": old_status}),
         new_data=json.dumps({"payment_status": "NEEDS_CORRECTION", "admin_note": reg.admin_note}),
-        performed_by="admin",
-        ip_address=client_ip
+        performed_by=performed_by,
+        ip_address=client_ip,
+        actor_user_id=actor_user_id,
+        actor_email=actor_email,
+        actor_role=actor_role,
+        action_type="NEEDS_CORRECTION",
+        action_message=f"{actor_email} marked registration as needing correction for {registration_id}",
+        changes_json=json.dumps({"payment_status": "NEEDS_CORRECTION", "admin_note": reg.admin_note}),
+        user_agent=user_agent
     )
     db.add(audit)
     db.commit()
@@ -1427,7 +1705,7 @@ async def admin_lock_edit(
     registration_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    admin_auth: str = Depends(verify_admin_token)
+    admin_auth: dict = Depends(verify_admin_token)
 ):
     """Manually lock editing of responses."""
     reg = db.query(models.EventRegistration).filter(
@@ -1440,12 +1718,25 @@ async def admin_lock_edit(
     reg.is_edit_locked = True
     
     client_ip = get_client_ip(request)
+    actor_email = admin_auth.get("email")
+    actor_role = admin_auth.get("role")
+    actor_user_id = admin_auth.get("user_id")
+    user_agent = request.headers.get("user-agent", "Unknown")
+    performed_by = f"{actor_role}: {actor_email}"
+
     audit = models.RegistrationAuditLog(
         registration_id=registration_id,
         action="LOCK_EDIT",
         new_data="Locked response editing manually",
-        performed_by="admin",
-        ip_address=client_ip
+        performed_by=performed_by,
+        ip_address=client_ip,
+        actor_user_id=actor_user_id,
+        actor_email=actor_email,
+        actor_role=actor_role,
+        action_type="LOCK_EDIT",
+        action_message=f"{actor_email} locked editing for {registration_id}",
+        changes_json=json.dumps({"is_edit_locked": True}),
+        user_agent=user_agent
     )
     db.add(audit)
     db.commit()
@@ -1457,7 +1748,7 @@ async def admin_unlock_edit(
     registration_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    admin_auth: str = Depends(verify_admin_token)
+    admin_auth: dict = Depends(verify_admin_token)
 ):
     """Manually unlock editing of responses."""
     reg = db.query(models.EventRegistration).filter(
@@ -1470,12 +1761,25 @@ async def admin_unlock_edit(
     reg.is_edit_locked = False
     
     client_ip = get_client_ip(request)
+    actor_email = admin_auth.get("email")
+    actor_role = admin_auth.get("role")
+    actor_user_id = admin_auth.get("user_id")
+    user_agent = request.headers.get("user-agent", "Unknown")
+    performed_by = f"{actor_role}: {actor_email}"
+
     audit = models.RegistrationAuditLog(
         registration_id=registration_id,
         action="UNLOCK_EDIT",
         new_data="Unlocked response editing manually",
-        performed_by="admin",
-        ip_address=client_ip
+        performed_by=performed_by,
+        ip_address=client_ip,
+        actor_user_id=actor_user_id,
+        actor_email=actor_email,
+        actor_role=actor_role,
+        action_type="UNLOCK_EDIT",
+        action_message=f"{actor_email} unlocked editing for {registration_id}",
+        changes_json=json.dumps({"is_edit_locked": False}),
+        user_agent=user_agent
     )
     db.add(audit)
     db.commit()
@@ -1489,7 +1793,7 @@ async def admin_resend_email(
     request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    admin_auth: str = Depends(verify_admin_token)
+    admin_auth: dict = Depends(verify_admin_token)
 ):
     """Triggers resend of the latest status email notifications in background."""
     reg = db.query(models.EventRegistration).filter(
@@ -1506,12 +1810,25 @@ async def admin_resend_email(
         db.refresh(reg)
 
     client_ip = get_client_ip(request)
+    actor_email = admin_auth.get("email")
+    actor_role = admin_auth.get("role")
+    actor_user_id = admin_auth.get("user_id")
+    user_agent = request.headers.get("user-agent", "Unknown")
+    performed_by = f"{actor_role}: {actor_email}"
+
     audit = models.RegistrationAuditLog(
         registration_id=registration_id,
         action="RESEND_EMAIL",
         new_data=json.dumps({"message": "Queued status email resend in background", "admin_note_used": reg.admin_note or ""}),
-        performed_by="admin",
-        ip_address=client_ip
+        performed_by=performed_by,
+        ip_address=client_ip,
+        actor_user_id=actor_user_id,
+        actor_email=actor_email,
+        actor_role=actor_role,
+        action_type="RESEND_EMAIL",
+        action_message=f"{actor_email} resent status email for {registration_id}",
+        changes_json=json.dumps({"admin_note": reg.admin_note or ""}),
+        user_agent=user_agent
     )
     db.add(audit)
     db.commit()
@@ -1563,7 +1880,7 @@ async def admin_call_registrant(
     payload: schemas.AdminAction,
     request: Request,
     db: Session = Depends(get_db),
-    admin_auth: str = Depends(verify_admin_token)
+    admin_auth: dict = Depends(verify_admin_token)
 ):
     """Triggers outbound AI Agent Voice Call to registrant via OmniDimension."""
     reg = db.query(models.EventRegistration).filter(
@@ -1627,6 +1944,12 @@ async def admin_call_registrant(
             raise HTTPException(status_code=500, detail=f"Failed to initiate calling flow: {str(e)}")
 
     client_ip = get_client_ip(request)
+    actor_email = admin_auth.get("email")
+    actor_role = admin_auth.get("role")
+    actor_user_id = admin_auth.get("user_id")
+    user_agent = request.headers.get("user-agent", "Unknown")
+    performed_by = f"{actor_role}: {actor_email}"
+
     audit = models.RegistrationAuditLog(
         registration_id=registration_id,
         action="AI_AGENT_CALL",
@@ -1636,8 +1959,18 @@ async def admin_call_registrant(
             "call_context": call_context,
             "response": call_response
         }),
-        performed_by="admin",
-        ip_address=client_ip
+        performed_by=performed_by,
+        ip_address=client_ip,
+        actor_user_id=actor_user_id,
+        actor_email=actor_email,
+        actor_role=actor_role,
+        action_type="AI_AGENT_CALL",
+        action_message=f"{actor_email} triggered AI call for {registration_id}",
+        changes_json=json.dumps({
+            "message": message,
+            "to_number": normalized_phone
+        }),
+        user_agent=user_agent
     )
     db.add(audit)
     db.commit()
@@ -1655,7 +1988,7 @@ async def admin_mark_attended(
     request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    admin_auth: str = Depends(verify_admin_token)
+    admin_auth: dict = Depends(verify_admin_token)
 ):
     """Marks registration as attended and sends certificate email."""
     reg = db.query(models.EventRegistration).filter(
@@ -1686,12 +2019,25 @@ async def admin_mark_attended(
     db.commit()
 
     client_ip = get_client_ip(request)
+    actor_email = admin_auth.get("email")
+    actor_role = admin_auth.get("role")
+    actor_user_id = admin_auth.get("user_id")
+    user_agent = request.headers.get("user-agent", "Unknown")
+    performed_by = f"{actor_role}: {actor_email}"
+
     audit = models.RegistrationAuditLog(
         registration_id=registration_id,
         action="MARK_ATTENDED",
         new_data=json.dumps({"message": "Marked attended and queued certificate email"}),
-        performed_by="admin",
-        ip_address=client_ip
+        performed_by=performed_by,
+        ip_address=client_ip,
+        actor_user_id=actor_user_id,
+        actor_email=actor_email,
+        actor_role=actor_role,
+        action_type="MARK_ATTENDED",
+        action_message=f"{actor_email} marked attended and sent certificate for {registration_id}",
+        changes_json=json.dumps({"attended": True, "certificate_sent": True}),
+        user_agent=user_agent
     )
     db.add(audit)
     db.commit()

@@ -91,5 +91,20 @@ class AdminAction(BaseModel):
 
 
 class AdminLogin(BaseModel):
-    admin_password: str
+    admin_password: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=6, max_length=100)
+
+
+class UserChangePassword(BaseModel):
+    password: str = Field(..., min_length=6, max_length=100)
+
+
+class UserStatusUpdate(BaseModel):
+    enabled: bool
 

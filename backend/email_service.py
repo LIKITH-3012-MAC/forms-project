@@ -476,3 +476,86 @@ def send_certificate_email(registration, db: Session):
 </html>
 """
     return _send_email_api_call(db, registration, "certificate", subject, html_body)
+
+
+def send_admin_user_credentials_email(email_to: str, temp_password: str, db: Session):
+    subject = "Your Account Has Been Created"
+    login_url = f"{config.FRONTEND_URL}/admin-login.html"
+    
+    html_body = f"""
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff; color: #1a202c;">
+        <h2 style="color: #4f46e5; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Account Created Successfully</h2>
+        <p>Hello,</p>
+        <p>An administrative account has been created for you with full privileges.</p>
+        <table style="width: 100%; margin: 20px 0; border-collapse: collapse; background-color: #f7fafc; border-radius: 6px;">
+            <tr>
+                <td style="padding: 12px; font-weight: bold; border: 1px solid #edf2f7; width: 30%;">Login Email:</td>
+                <td style="padding: 12px; border: 1px solid #edf2f7;">{email_to}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px; font-weight: bold; border: 1px solid #edf2f7;">Temporary Password:</td>
+                <td style="padding: 12px; border: 1px solid #edf2f7; font-family: monospace; font-size: 16px; color: #e53e3e;">{temp_password}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px; font-weight: bold; border: 1px solid #edf2f7;">Login URL:</td>
+                <td style="padding: 12px; border: 1px solid #edf2f7;"><a href="{login_url}" style="color: #4f46e5; text-decoration: none; font-weight: 600;">Access Admin Portal</a></td>
+            </tr>
+        </table>
+        <div style="background-color: #fffaf0; border-left: 4px solid #dd6b20; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 0; font-weight: bold; color: #dd6b20;">Important Security Notice:</p>
+            <p style="margin: 5px 0 0 0;">You will be forced to change your password immediately upon your first login. Please keep your temporary credentials secure.</p>
+        </div>
+        <p style="margin-top: 30px; font-size: 12px; color: #a0aec0; border-top: 1px solid #e2e8f0; padding-top: 15px;">This is an automated message. Please do not reply directly to this email.</p>
+    </div>
+    """
+    
+    # Check key and simulate if needed
+    if not config.RESEND_API_KEY or config.RESEND_API_KEY.startswith("re_xxx") or not config.RESEND_API_KEY.strip():
+        print(f"\\n--- [EMAIL SIMULATION: ADMIN CREATED USER] ---")
+        print(f"To: {email_to}")
+        print(f"Subject: {subject}")
+        print(f"Temp Password: {temp_password}")
+        print("API Key not configured or placeholder. Treating as simulated SUCCESS.")
+        print("-------------------------------------------\\n")
+        
+        log_email_result(
+            db=db,
+            registration_id="ADMIN_USER_CREATE",
+            email_to=email_to,
+            email_type="admin_user_created",
+            subject=subject,
+            status="SENT",
+            resend_message_id="simulated_id_" + secrets.token_hex(8)
+        )
+        return True
+
+    try:
+        response = resend.Emails.send({
+            "from": config.FROM_EMAIL,
+            "to": email_to,
+            "subject": subject,
+            "html": html_body
+        })
+        message_id = response.get("id")
+        log_email_result(
+            db=db,
+            registration_id="ADMIN_USER_CREATE",
+            email_to=email_to,
+            email_type="admin_user_created",
+            subject=subject,
+            status="SENT",
+            resend_message_id=message_id
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Resend email sending failed for admin user {email_to}: {e}")
+        log_email_result(
+            db=db,
+            registration_id="ADMIN_USER_CREATE",
+            email_to=email_to,
+            email_type="admin_user_created",
+            subject=subject,
+            status="FAILED",
+            error_message=str(e)
+        )
+        return False
