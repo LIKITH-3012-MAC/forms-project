@@ -389,19 +389,13 @@
       const token = localStorage.getItem("admin_token");
       
       try {
-        const response = await fetch(`${CONFIG.BACKEND_URL}/api/admin/users/change-password`, {
+        await apiFetch("/api/admin/users/change-password", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({ password: newPwd })
         });
-        
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || "Failed to update password.");
-        }
         
         markButtonSuccess(btn, "Saved ✅");
         setTimeout(() => {

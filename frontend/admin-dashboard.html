@@ -846,16 +846,13 @@
 
       setButtonLoading(btn, "Creating...");
       try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/users`, {
+        await apiFetch("/api/admin/users/create", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             "Authorization": `Bearer ${adminToken}`
           },
           body: JSON.stringify({ email, password })
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || "Failed to create user");
 
         showToast("User created successfully. Email sent.", "success");
         markButtonSuccess(btn, "Created ✅");
@@ -876,13 +873,12 @@
       const list = document.getElementById("adminUsersList");
       list.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">Loading users...</td></tr>`;
       try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/users`, {
+        const data = await apiFetch("/api/admin/users", {
           headers: { "Authorization": `Bearer ${adminToken}` }
         });
-        const users = await response.json();
-        if (!response.ok) throw new Error("Failed to load users");
         
         list.innerHTML = "";
+        const users = data.users || [];
         if (users.length === 0) {
            list.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">No users found.</td></tr>`;
            return;
@@ -911,15 +907,13 @@
     async function toggleUserStatus(userId, enabled) {
       if(!confirm(`Are you sure you want to ${enabled ? 'enable' : 'disable'} this user?`)) return;
       try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/users/${userId}/status`, {
-          method: "PUT",
+        await apiFetch(`/api/admin/users/${userId}/status`, {
+          method: "PATCH",
           headers: {
-            "Content-Type": "application/json",
             "Authorization": `Bearer ${adminToken}`
           },
           body: JSON.stringify({ enabled })
         });
-        if (!response.ok) throw new Error("Failed to change status");
         showToast("User status updated", "success");
         loadAdminUsers();
       } catch (err) {

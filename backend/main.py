@@ -1231,7 +1231,7 @@ async def list_admin_users(
     }
 
 
-@app.patch("/api/admin/users/{user_id}/status")
+@app.api_route("/api/admin/users/{user_id}/status", methods=["PUT", "PATCH"])
 async def update_user_status(
     user_id: int,
     payload: schemas.UserStatusUpdate,
