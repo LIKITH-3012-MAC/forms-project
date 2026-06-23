@@ -659,6 +659,52 @@
           document.getElementById("btnUnlock").disabled = true;
         }
 
+        // Helper to format JSON audit details beautifully
+        function formatAuditChanges(newDataStr) {
+          if (!newDataStr) return '';
+          try {
+            const parsed = JSON.parse(newDataStr);
+            if (typeof parsed !== 'object' || parsed === null) {
+              return escapeHtml(newDataStr);
+            }
+            
+            const items = [];
+            for (const [key, val] of Object.entries(parsed)) {
+              if ((key === 'admin_note' || key === 'admin_note_used' || key === 'message') && !val) {
+                continue;
+              }
+
+              let friendlyKey = key.replace(/_/g, ' ')
+                                   .replace(/\b\w/g, c => c.toUpperCase());
+                                   
+              if (key === 'upi_reference_id') friendlyKey = 'UPI Reference';
+              if (key === 'filename') friendlyKey = 'Screenshot Filename';
+              if (key === 'new_screenshot_uploaded') friendlyKey = 'New Screenshot Uploaded';
+              
+              let friendlyVal = val;
+              if (val === true) friendlyVal = 'Yes';
+              if (val === false) friendlyVal = 'No';
+              if (val === null || val === '') friendlyVal = 'None';
+              
+              items.push(`
+                <div style="margin-bottom: 2px;">
+                  <strong style="color: var(--text-muted); font-size: 11px;">${escapeHtml(friendlyKey)}:</strong> 
+                  <span style="color: #ffffff; font-size: 12px; font-weight: 500;">${escapeHtml(friendlyVal)}</span>
+                </div>
+              `);
+            }
+            
+            if (items.length === 0) return '';
+            return `
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; margin-top: 6px; padding: 10px 14px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                ${items.join('')}
+              </div>
+            `;
+          } catch (e) {
+            return escapeHtml(newDataStr);
+          }
+        }
+
         // Render Audits
         const auditEl = document.getElementById("auditLogs");
         auditEl.innerHTML = "";
@@ -673,7 +719,10 @@
 
             let changesHtml = '';
             if (a.new_data && a.new_data !== "{}") {
-                changesHtml = `<div class="log-desc" style="margin-top: 4px;">Changes: <span style="font-family: monospace; font-size: 11px;">${escapeHtml(a.new_data)}</span></div>`;
+                const formatted = formatAuditChanges(a.new_data);
+                if (formatted) {
+                    changesHtml = `<div class="log-desc" style="margin-top: 4px;">${formatted}</div>`;
+                }
             }
 
             let messageHtml = '';
