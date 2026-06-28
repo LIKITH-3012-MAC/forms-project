@@ -580,9 +580,125 @@ html[data-theme="light"] {
 .ai-receipt-panel.state-medium .ai-progress-fill { background: var(--warning); }
 
 .ai-receipt-panel.state-low .ai-score-ring {
-  background: conic-gradient(var(--danger) var(--score-angle, 0deg), var(--border) 0deg);
+  background: conic-gradient(var(--score-angle, 0deg) var(--score-angle, 0deg), var(--border) 0deg);
   box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
 }
 .ai-receipt-panel.state-low .ai-icon { color: var(--danger); }
 .ai-receipt-panel.state-low .ai-badge { color: var(--danger); border-color: var(--danger); background: rgba(239, 68, 68, 0.1); }
 .ai-receipt-panel.state-low .ai-progress-fill { background: var(--danger); }
+
+/* --- GLASSMORPHISM SYSTEM (Fluent / visionOS Aesthetics) --- */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.glass-panel:hover {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.15) !important;
+  transform: translateY(-2px) !important;
+}
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.35) !important;
+  backdrop-filter: blur(15px) !important;
+  -webkit-backdrop-filter: blur(15px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 20px !important;
+  padding: 24px !important;
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.12) !important;
+  transform: translateY(-2px) !important;
+}
+
+.glass-button {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.8), rgba(139, 92, 246, 0.8)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.glass-button:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(139, 92, 246, 0.95)) !important;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5) !important;
+  transform: translateY(-1px) !important;
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+  transition: all 0.3s ease !important;
+}
+
+.glass-input:focus {
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.glass-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  background: rgba(15, 23, 42, 0.2) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.glass-table th {
+  background: rgba(255, 255, 255, 0.05) !important;
+  padding: 14px 18px !important;
+  font-weight: 600 !important;
+  text-align: left !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.glass-table td {
+  padding: 14px 18px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Background animated particle container */
+.particle-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, #0a0f24, #020617);
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15), transparent);
+  filter: blur(10px);
+  animation: float 25s infinite linear;
+}
+
+@keyframes float {
+  0% { transform: translateY(100vh) scale(1); opacity: 0; }
+  50% { opacity: 0.8; }
+  100% { transform: translateY(-10vh) scale(1.5); opacity: 0; }
+}

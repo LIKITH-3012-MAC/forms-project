@@ -406,10 +406,26 @@
       top: 0;
     }
 
-  </style>
+  <script>
+    (function() {
+      const storedTheme = localStorage.getItem("event-theme") || "dark";
+      document.documentElement.setAttribute("data-theme", storedTheme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/assets/theme.css">
   <link rel="stylesheet" href="/assets/performance.css">
 </head>
 <body>
+  <div class="theme-floating">
+    <button id="themeToggle" class="neo-btn neo-btn-icon theme-toggle" aria-label="Toggle theme">
+      <span id="themeIcon">🌙</span>
+    </button>
+  </div>
+  <div class="particle-bg">
+    <div class="particle" style="width: 100px; height: 100px; left: 10%; top: 15%; animation-duration: 20s;"></div>
+    <div class="particle" style="width: 150px; height: 150px; right: 10%; top: 40%; animation-duration: 28s;"></div>
+    <div class="particle" style="width: 80px; height: 80px; left: 30%; bottom: 15%; animation-duration: 24s;"></div>
+  </div>
   <header>
     <div class="brand-title">
       SAKRA VISION <span>Admin Panel</span>
@@ -472,7 +488,7 @@
     </div>
 
     <!-- Table container -->
-    <div class="table-container">
+    <div class="table-container glass-panel">
       <table>
         <thead>
           <tr>
@@ -515,8 +531,32 @@
       <div class="modal-tabs">
         <button class="modal-tab active" id="tabCreateUser" onclick="switchAdminTab('create')">Create User</button>
         <button class="modal-tab" id="tabManageUsers" onclick="switchAdminTab('manage')">Manage Users</button>
+        <button class="modal-tab" id="tabTeamSettings" onclick="switchAdminTab('settings')">Team Settings</button>
       </div>
       
+      <!-- Team Settings Tab -->
+      <div id="teamSettingsSection" style="display: none;">
+        <form onsubmit="handleSaveSettings(event)">
+          <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 10px 0;">
+            <label style="margin-bottom: 0; font-weight: 500;">Enable Team Registration</label>
+            <input type="checkbox" id="settingTeamEnabled" style="width: auto; transform: scale(1.3); cursor: pointer;" />
+          </div>
+          <div class="form-group">
+            <label for="settingMaxTeamSize">Maximum Team Size</label>
+            <select id="settingMaxTeamSize" style="background: rgba(22, 26, 33, 0.8); border: 1px solid var(--border-color); color: #fff;">
+              <option value="1">1 (Individual Only)</option>
+              <option value="2">2 members</option>
+              <option value="3">3 members</option>
+              <option value="4">4 members</option>
+              <option value="5">5 members</option>
+              <option value="6">6 members</option>
+              <option value="10">10 members</option>
+            </select>
+          </div>
+          <button type="submit" id="saveSettingsBtn" class="neo-btn neo-btn-primary" style="width: 100%; margin-top: 10px;">Save Settings</button>
+        </form>
+      </div>
+
       <!-- Create User Tab -->
       <div id="createUserSection">
         <form onsubmit="handleCreateUser(event)">
@@ -653,10 +693,20 @@
         }
 
         data.registrations.forEach(r => {
+          let typeLabel = '<div style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 4px;">👤 Individual</div>';
+          if (r.registration_type === "team") {
+            const teamName = r.team_name ? escapeHtml(r.team_name) : "Unnamed Team";
+            const teamSize = r.team_size || 1;
+            typeLabel = `<div style="font-size: 11px; color: #818cf8; margin-top: 4px; display: flex; align-items: center; gap: 4px; font-weight: 600;">👥 Team: ${teamName} (${teamSize} members)</div>`;
+          }
+
           listEl.innerHTML += `
             <tr>
               <td><a class="reg-id-link" href="admin-detail.html?rid=${r.registration_id}">${r.registration_id}</a></td>
-              <td style="font-weight: 500; color: #ffffff;">${escapeHtml(r.full_name)}</td>
+              <td style="font-weight: 500; color: #ffffff; padding: 12px 20px;">
+                ${escapeHtml(r.full_name)}
+                ${typeLabel}
+              </td>
               <td>${escapeHtml(r.email)}</td>
               <td>${escapeHtml(r.phone)}</td>
               <td style="font-family: monospace; letter-spacing: 0.02em;">${escapeHtml(r.upi_reference_id)}</td>
@@ -823,16 +873,68 @@
     function switchAdminTab(tab) {
       document.getElementById("tabCreateUser").classList.remove("active");
       document.getElementById("tabManageUsers").classList.remove("active");
+      document.getElementById("tabTeamSettings").classList.remove("active");
       document.getElementById("createUserSection").style.display = "none";
       document.getElementById("manageUsersSection").style.display = "none";
+      document.getElementById("teamSettingsSection").style.display = "none";
 
       if (tab === "create") {
         document.getElementById("tabCreateUser").classList.add("active");
         document.getElementById("createUserSection").style.display = "block";
-      } else {
+      } else if (tab === "manage") {
         document.getElementById("tabManageUsers").classList.add("active");
         document.getElementById("manageUsersSection").style.display = "block";
         loadAdminUsers();
+      } else if (tab === "settings") {
+        document.getElementById("tabTeamSettings").classList.add("active");
+        document.getElementById("teamSettingsSection").style.display = "block";
+        loadTeamSettings();
+      }
+    }
+
+    async function loadTeamSettings() {
+      try {
+        const data = await apiFetch("/api/admin/settings", {
+          headers: {
+            "Authorization": `Bearer ${adminToken}`,
+            "X-Admin-Token": adminToken
+          }
+        });
+        document.getElementById("settingTeamEnabled").checked = data.team_registration_enabled;
+        document.getElementById("settingMaxTeamSize").value = data.team_registration_max_size;
+      } catch (err) {
+        showToast("Failed to load settings: " + err.message, "danger");
+      }
+    }
+
+    async function handleSaveSettings(e) {
+      e.preventDefault();
+      const enabled = document.getElementById("settingTeamEnabled").checked;
+      const maxSize = parseInt(document.getElementById("settingMaxTeamSize").value);
+      const btn = document.getElementById("saveSettingsBtn");
+
+      setButtonLoading(btn, "Saving...");
+      try {
+        await apiFetch("/api/admin/settings", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${adminToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            team_registration_enabled: enabled,
+            team_registration_max_size: maxSize
+          })
+        });
+        showToast("Settings saved successfully", "success");
+        markButtonSuccess(btn, "Saved ✅");
+        setTimeout(() => {
+          btn.innerText = "Save Settings";
+          btn.disabled = false;
+        }, 1500);
+      } catch (err) {
+        showToast("Failed to save settings: " + err.message, "danger");
+        markButtonError(btn, "Failed");
       }
     }
 

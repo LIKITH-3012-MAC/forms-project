@@ -140,7 +140,7 @@ def organizer_message_block(admin_note: str, message_type: str = "info") -> str:
     """
 
 def render_email_body(registration, title: str, description: str, status_text: str, badge_color: str, message_type: str = "info") -> str:
-    """Renders the HTML body of the email with premium styles and action buttons."""
+    """Renders the HTML body of the email with a modern premium responsive light design."""
     
     # Escape user values for security
     full_name = escape_html(registration.full_name)
@@ -164,19 +164,100 @@ def render_email_body(registration, title: str, description: str, status_text: s
     edit_notice = ""
     if registration.is_edit_locked:
         edit_notice = """
-        <div style="margin-top: 15px; padding: 10px; background-color: #3b2020; border-left: 4px solid #f44336; border-radius: 4px; color: #ff9999; font-size: 13px; text-align: left;">
+        <div style="margin-top: 15px; padding: 12px; background-color: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; border-radius: 8px; color: #991b1b; font-size: 13px; text-align: left; line-height: 1.5;">
             <strong>Note:</strong> Response editing is locked because your registration has been approved. If you need to make changes, please contact the organizer.
         </div>
         """
     else:
         edit_notice = """
-        <div style="margin-top: 15px; padding: 10px; background-color: #1e2530; border-left: 4px solid #3b82f6; border-radius: 4px; color: #93c5fd; font-size: 13px; text-align: left;">
-            <strong>Note:</strong> You can edit your response details using the "Edit Response" button below, until the organizers review/approve it.
+        <div style="margin-top: 15px; padding: 12px; background-color: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid #0284c7; border-radius: 8px; color: #075985; font-size: 13px; text-align: left; line-height: 1.5;">
+            <strong>Note:</strong> You can edit your response details using the "Edit Response" button above, until the organizers review/approve it.
         </div>
         """
 
     # Admin note display
     admin_note_section = organizer_message_block(registration.admin_note, message_type)
+
+    import json
+    reg_type = getattr(registration, "registration_type", "individual")
+    team_name_val = getattr(registration, "team_name", None) or "N/A"
+    team_lead_name = "N/A"
+    teammates_list = []
+    total_members = 1
+
+    if reg_type == "team":
+        team_info_str = getattr(registration, "team_info", None)
+        if team_info_str:
+            try:
+                team_data = json.loads(team_info_str)
+                team_lead_name = team_data.get("team_lead", {}).get("name") or registration.full_name
+                members = team_data.get("members", [])
+                total_members = len(members) + 1
+                for idx, m in enumerate(members):
+                    name = m.get("name")
+                    email_addr = m.get("email")
+                    teammates_list.append(f"{name} ({email_addr})")
+            except Exception as e:
+                print(f"Error parsing team info in email rendering: {e}")
+        else:
+            team_lead_name = registration.full_name
+            teammates_list = []
+    
+    # Render Team section if applicable
+    team_section_html = ""
+    if reg_type == "team":
+        member_rows = ""
+        for idx, m in enumerate(teammates_list):
+            member_rows += f"""
+            <tr style="border-top: 1px solid #e2e8f0;">
+                <td style="padding: 10px 0; color: #334155; font-size: 13px;">
+                    <strong>Member {idx + 2}:</strong> {escape_html(m)}
+                </td>
+            </tr>
+            """
+        
+        team_section_html = f"""
+        <!-- Team Information Card -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc;">
+            <tr>
+                <td style="padding: 20px;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 13px; color: #475569; text-transform: uppercase; font-weight: 800; letter-spacing: 0.08em; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">👥 Team Information</h3>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size: 14px; margin-bottom: 12px;">
+                        <tr>
+                            <td style="padding: 6px 0; color: #64748b; font-weight: 500; width: 40%; vertical-align: top;">Team Name:</td>
+                            <td style="padding: 6px 0; color: #0f172a; font-weight: 700;">{team_name_val}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; color: #64748b; font-weight: 500; vertical-align: top;">Team Leader:</td>
+                            <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">{team_lead_name}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; color: #64748b; font-weight: 500; vertical-align: top;">Total Members:</td>
+                            <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">{total_members}</td>
+                        </tr>
+                    </table>
+                    
+                    <h4 style="margin: 16px 0 8px 0; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em;">Member List</h4>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                        {member_rows}
+                    </table>
+                </td>
+            </tr>
+        </table>
+        """
+
+    slot_time = escape_html(getattr(registration, "slot_time", None) or "10:00 AM - 11:00 AM")
+
+    # Dynamic status icons and accent colors for status card
+    status_icon = "🔔"
+    if "approve" in title.lower() or "confirm" in title.lower():
+        status_icon = "✅"
+    elif "reject" in title.lower():
+        status_icon = "❌"
+    elif "correct" in title.lower():
+        status_icon = "⚠️"
+    elif "review" in title.lower() or "pending" in title.lower():
+        status_icon = "⏳"
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -184,6 +265,237 @@ def render_email_body(registration, title: str, description: str, status_text: s
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
+    <!--[if mso]>
+    <style type="text/css">
+      body, table, td, p, a, div, h1, h2, h3, span {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important; }}
+    </style>
+    <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; -webkit-text-size-adjust: 100%; background-color: #ffffff; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 24px; background-color: #ffffff;">
+        
+        <!-- Header -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; text-align: center;">
+            <tr>
+                <td style="padding: 24px 0; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 16px;">
+                    <h1 style="margin: 0; font-size: 26px; color: #ffffff; font-weight: 800; letter-spacing: -0.025em; text-transform: uppercase;">{escape_html(config.ORGANIZER_NAME)}</h1>
+                    <p style="margin: 6px 0 0 0; font-size: 14px; color: #38bdf8; font-weight: 600;">{event_name}</p>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Main Card -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 24px;">
+            <tr>
+                <td style="padding: 32px 24px;">
+                    
+                    <!-- Status Banner / Card -->
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; text-align: left;">
+                        <tr>
+                            <td style="padding: 20px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; border-left: 5px solid {badge_color};">
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                    <tr>
+                                        <td style="vertical-align: top; padding-right: 12px; font-size: 24px; line-height: 1;">
+                                            {status_icon}
+                                        </td>
+                                        <td style="vertical-align: top;">
+                                            <div style="font-size: 11px; color: {badge_color}; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;">{status_text}</div>
+                                            <h2 style="margin: 0 0 8px 0; color: #0f172a; font-size: 18px; font-weight: 800; letter-spacing: -0.01em;">{title}</h2>
+                                            <p style="margin: 0; color: #475569; font-size: 14px; line-height: 1.6;">{description}</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+
+                    {admin_note_section}
+
+                    <!-- Registration Summary Card -->
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc;">
+                        <tr>
+                            <td style="padding: 20px;">
+                                <h3 style="margin: 0 0 16px 0; font-size: 13px; color: #475569; text-transform: uppercase; font-weight: 800; letter-spacing: 0.08em; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">📋 Registration Details</h3>
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size: 14px;">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; width: 40%; vertical-align: top;">Registration ID:</td>
+                                        <td style="padding: 8px 0; color: #0f172a; font-weight: 700; font-family: monospace; word-break: break-all; width: 60%;">{reg_id}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; vertical-align: top;">Full Name:</td>
+                                        <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">{full_name}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; vertical-align: top;">Email:</td>
+                                        <td style="padding: 8px 0; color: #0f172a; word-break: break-all;">{email}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; vertical-align: top;">Phone:</td>
+                                        <td style="padding: 8px 0; color: #0f172a;">{phone}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; vertical-align: top;">College:</td>
+                                        <td style="padding: 8px 0; color: #0f172a; line-height: 1.4;">{college}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; vertical-align: top;">Department:</td>
+                                        <td style="padding: 8px 0; color: #0f172a;">{department} (Year {year})</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; vertical-align: top;">Roll Number:</td>
+                                        <td style="padding: 8px 0; color: #0f172a;">{roll_number}</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Payment Information Card -->
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc;">
+                        <tr>
+                            <td style="padding: 20px;">
+                                <h3 style="margin: 0 0 16px 0; font-size: 13px; color: #475569; text-transform: uppercase; font-weight: 800; letter-spacing: 0.08em; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">💳 Payment Information</h3>
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size: 14px;">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; width: 40%; vertical-align: top;">Amount Paid:</td>
+                                        <td style="padding: 8px 0; color: #16a34a; font-weight: 700;">₹{amount} (via {upi_id})</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; vertical-align: top;">UPI Ref ID / UTR:</td>
+                                        <td style="padding: 8px 0; color: #0f172a; font-family: monospace;">{utr}</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Team Details Card (Only if Team) -->
+                    {team_section_html}
+
+                    <!-- Event Information Card -->
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 28px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc;">
+                        <tr>
+                            <td style="padding: 20px;">
+                                <h3 style="margin: 0 0 16px 0; font-size: 13px; color: #475569; text-transform: uppercase; font-weight: 800; letter-spacing: 0.08em; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">📅 Event Details</h3>
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size: 14px;">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; width: 40%; vertical-align: top;">Event Name:</td>
+                                        <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">{event_name}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; vertical-align: top;">Date:</td>
+                                        <td style="padding: 8px 0; color: #0f172a;">15 July 2026</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; vertical-align: top;">Time:</td>
+                                        <td style="padding: 8px 0; color: #0f172a;">10:00 AM</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; vertical-align: top;">Slot Time:</td>
+                                        <td style="padding: 8px 0; color: #2563eb; font-weight: 600;">{slot_time}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; font-weight: 500; vertical-align: top;">Venue:</td>
+                                        <td style="padding: 8px 0; color: #0f172a; line-height: 1.4;">Sakra Vision Innovation Center<br><span style="font-size:12px; color:#64748b;">Hyderabad</span></td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- AI Assistant Card -->
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 28px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc; border-left: 5px solid #6366f1;">
+                        <tr>
+                            <td style="padding: 20px;">
+                                <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #4f46e5; font-weight: 800;">🤖 Sakra Vision AI Assistant</h3>
+                                <p style="margin: 0 0 12px 0; font-size: 13px; color: #475569; line-height: 1.5;">Our automated AI Voice Assistant will use your phone number to update you. You may receive:</p>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #475569; line-height: 1.6;">
+                                    <li>📞 Outbound voice calls for registration/payment confirmations.</li>
+                                    <li>Real-time status updates and confirmation emails.</li>
+                                    <li>📅 Slot allocation and check-in reminders.</li>
+                                    <li>📢 Organizer announcements and event reminders.</li>
+                                </ul>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Action Buttons -->
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 32px; text-align: center;">
+                        <tr>
+                            <td style="padding-bottom: 12px;">
+                                <a href="{status_link}" target="_blank" style="display: inline-block; width: 85%; max-width: 320px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #ffffff; text-decoration: none; padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 6px rgba(37,99,235,0.15); text-align: center;">
+                                    Check Status / Live Timeline
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-bottom: 8px;">
+                                <table role="presentation" width="85%" cellspacing="0" cellpadding="0" align="center">
+                                    <tr>
+                                        <td width="48%">
+                                            <a href="{view_link}" target="_blank" style="display: block; background-color: #ffffff; color: #475569; text-decoration: none; padding: 10px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; text-align: center; border: 1px solid #cbd5e1;">
+                                                View Response Copy
+                                            </a>
+                                        </td>
+                                        <td width="4%"></td>
+                                        <td width="48%">
+                                            <a href="{edit_link}" target="_blank" style="display: block; background-color: #ffffff; color: #475569; text-decoration: none; padding: 10px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; text-align: center; border: 1px solid #cbd5e1;">
+                                                Edit Response
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-top: 10px;">
+                                {edit_notice}
+                            </td>
+                        </tr>
+                    </table>
+
+                </td>
+            </tr>
+        </table>
+
+        <!-- Footer -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="text-align: center; font-size: 12px; color: #64748b; line-height: 1.6; padding: 24px 0 12px 0;">
+            <tr>
+                <td style="border-top: 1px solid #e2e8f0; padding-top: 24px;">
+                    <p style="margin: 0 0 4px 0; font-weight: 700; font-size: 14px; color: #334155;">SAKRA VISION</p>
+                    <p style="margin: 0 0 12px 0;">Founder: Likith Naidu | Support: 9440113763 | <a href="mailto:likith.anumakonda@gmail.com" style="color: #2563eb; text-decoration: none;">likith.anumakonda@gmail.com</a></p>
+                    <p style="margin: 0;">This email is automated. If you have any questions, please contact us.</p>
+                    <p style="margin: 4px 0 0 0;">&copy; 2026 Sakra Vision. All rights reserved.</p>
+                </td>
+            </tr>
+        </table>
+
+    </div>
+</body>
+</html>
+"""
+    return html
+
+
+def render_member_email_body(registration, member_name: str) -> str:
+    """Renders tailored HTML email body for team members with a clean modern aesthetic."""
+    event_name = escape_html(registration.event_name)
+    team_name = escape_html(registration.team_name or "N/A")
+    team_lead = escape_html(registration.full_name)
+    registration_status = escape_html(registration.registration_status or "PENDING")
+    payment_status = escape_html(registration.payment_status or "PENDING_REVIEW").replace("_", " ")
+    
+    event_date = "15 July 2026"
+    slot_time = escape_html(registration.slot_time or "10:00 AM - 11:00 AM")
+    venue_name = "Sakra Vision Innovation Center"
+    admin_message = escape_html(registration.admin_note or "No message provided.").replace("\n", "<br>")
+    
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Registration Update</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #f8fafc;">
     <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0f172a;">
@@ -194,83 +506,51 @@ def render_email_body(registration, title: str, description: str, status_text: s
         </div>
         
         <!-- Main Content Card -->
-        <div style="background-color: #1e293b; padding: 30px; border-radius: 0 0 12px 12px; border: 1px solid #334155; border-top: none; text-align: center;">
-            <div style="display: inline-block; padding: 6px 16px; background-color: {badge_color}; color: #ffffff; border-radius: 9999px; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 20px;">
-                {status_text}
-            </div>
+        <div style="background-color: #1e293b; padding: 30px; border-radius: 0 0 12px 12px; border: 1px solid #334155; border-top: none; text-align: left;">
+            <p style="margin: 0 0 20px 0; font-size: 16px; color: #f1f5f9;">Hello <strong>{escape_html(member_name)}</strong>,</p>
             
-            <h2 style="margin: 0 0 10px 0; color: #ffffff; font-size: 20px; font-weight: 700;">{title}</h2>
-            <p style="margin: 0 0 25px 0; color: #94a3b8; font-size: 15px; line-height: 1.6;">{description}</p>
+            <p style="margin: 0 0 15px 0; font-size: 15px; color: #cbd5e1; line-height: 1.6;">This is an automated update from Sakra Vision.</p>
+            <p style="margin: 0 0 20px 0; font-size: 15px; color: #cbd5e1; line-height: 1.6;">You are registered as a member of Team <strong>"{team_name}"</strong> for <strong>{event_name}</strong>.</p>
             
-            {admin_note_section}
-
             <!-- Details Box -->
             <div style="background-color: #0f172a; border-radius: 8px; border: 1px solid #334155; padding: 20px; margin-bottom: 30px; text-align: left;">
-                <h3 style="margin: 0 0 15px 0; font-size: 14px; color: #38bdf8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; border-bottom: 1px solid #334155; padding-bottom: 5px;">Registration Summary</h3>
+                <h3 style="margin: 0 0 15px 0; font-size: 14px; color: #38bdf8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; border-bottom: 1px solid #334155; padding-bottom: 5px;">Registration Details</h3>
                 <table style="width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed;">
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b; width: 35%; vertical-align: top;">Registration ID:</td>
-                        <td style="padding: 6px 0; color: #ffffff; font-weight: 600; font-family: monospace; word-break: break-all; overflow-wrap: break-word; width: 65%;">{reg_id}</td>
+                        <td style="padding: 6px 0; color: #64748b; width: 35%; vertical-align: top;">Team Leader:</td>
+                        <td style="padding: 6px 0; color: #ffffff; font-weight: 600; width: 65%;">{team_lead}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Full Name:</td>
-                        <td style="padding: 6px 0; color: #ffffff; word-break: break-word; overflow-wrap: break-word;">{full_name}</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Current Registration Status:</td>
+                        <td style="padding: 6px 0; color: #ffffff; text-transform: uppercase;">{registration_status}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Email:</td>
-                        <td style="padding: 6px 0; color: #ffffff; word-break: break-all; overflow-wrap: break-word;">{email}</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Current Payment Status:</td>
+                        <td style="padding: 6px 0; color: #ffffff; text-transform: uppercase;">{payment_status}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Phone Number:</td>
-                        <td style="padding: 6px 0; color: #ffffff; word-break: break-word; overflow-wrap: break-word;">{phone}</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Event Date:</td>
+                        <td style="padding: 6px 0; color: #ffffff;">{event_date}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">College:</td>
-                        <td style="padding: 6px 0; color: #ffffff; word-break: break-word; overflow-wrap: break-word;">{college}</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Slot Time:</td>
+                        <td style="padding: 6px 0; color: #ffffff;">{slot_time}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Department:</td>
-                        <td style="padding: 6px 0; color: #ffffff; word-break: break-word; overflow-wrap: break-word;">{department} (Year {year})</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Roll Number:</td>
-                        <td style="padding: 6px 0; color: #ffffff; word-break: break-word; overflow-wrap: break-word;">{roll_number}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Amount Paid:</td>
-                        <td style="padding: 6px 0; color: #22c55e; font-weight: bold; word-break: break-word; overflow-wrap: break-word;">₹{amount} (via {upi_id})</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">UPI Ref ID / UTR:</td>
-                        <td style="padding: 6px 0; color: #ffffff; font-family: monospace; word-break: break-all; overflow-wrap: break-word;">{utr}</td>
+                        <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Venue:</td>
+                        <td style="padding: 6px 0; color: #ffffff;">{venue_name}</td>
                     </tr>
                 </table>
+            </div>
+
+            <!-- Message from Organizer -->
+            <div style="padding: 16px; border-left: 4px solid #3b82f6; background-color: #0f172a; border-radius: 4px; margin-bottom: 25px;">
+                <strong style="color: #3b82f6; display: block; margin-bottom: 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Organizer Message</strong>
+                <p style="margin: 0; color: #cbd5e1; font-size: 14px; line-height: 1.6;">{admin_message}</p>
             </div>
             
-            <!-- Call to Actions -->
-            <div style="margin-bottom: 20px;">
-                <a href="{status_link}" target="_blank" style="display: block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; margin-bottom: 12px; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); text-align: center;">
-                    Check Status / Live Timeline
-                </a>
-                
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">
-                    <tr>
-                        <td style="width: 48%;">
-                            <a href="{view_link}" target="_blank" style="display: block; background-color: #334155; color: #f1f5f9; text-decoration: none; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; text-align: center; border: 1px solid #475569;">
-                                View Response Copy
-                            </a>
-                        </td>
-                        <td style="width: 4%;"></td>
-                        <td style="width: 48%;">
-                            <a href="{edit_link}" target="_blank" style="display: block; background-color: #334155; color: #f1f5f9; text-decoration: none; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; text-align: center; border: 1px solid #475569;">
-                                Edit Response
-                            </a>
-                        </td>
-                    </tr>
-                </table>
-                
-                {edit_notice}
-            </div>
+            <p style="margin: 0 0 20px 0; font-size: 14px; color: #94a3b8;">A confirmation has also been shared with your Team Leader.</p>
+            <p style="margin: 0 0 20px 0; font-size: 14px; color: #cbd5e1;">Thank you.<br>Sakra Vision</p>
             
             <hr style="border: 0; border-top: 1px solid #334155; margin: 30px 0 20px 0;">
             
@@ -286,59 +566,133 @@ def render_email_body(registration, title: str, description: str, status_text: s
 """
     return html
 
-def _send_email_api_call(db: Session, registration, email_type: str, subject: str, html_body: str):
-    """Internal helper to invoke the Resend API and log the result."""
-    assert_safe_frontend_url()
-
-    if not config.RESEND_API_KEY or config.RESEND_API_KEY.startswith("re_xxx"):
-        # Simulated mode if no valid API key is set
-        print(f"\n--- [EMAIL SIMULATION: {email_type.upper()}] ---")
-        print(f"To: {registration.email}")
-        print(f"Subject: {subject}")
-        print("API Key not configured or placeholder. Treating as simulated SUCCESS.")
-        print("-------------------------------------------\n")
-        log_email_result(
-            db=db,
-            registration_id=registration.registration_id,
-            email_to=registration.email,
-            email_type=email_type,
-            subject=subject,
-            status="SENT",
-            resend_message_id="simulated_id_" + secrets.token_hex(8)
-        )
-        return True
-
+def _send_single_email_to_recipient(registration, recipient_email: str, email_type: str, subject: str, html_body: str) -> bool:
+    """Invokes Resend API for a single recipient and logs the transaction using a fresh DB session, with automatic retry for rate limits."""
+    from database import SessionLocal
+    db = SessionLocal()
     try:
-        response = resend.Emails.send({
-            "from": config.FROM_EMAIL,
-            "to": registration.email,
-            "subject": subject,
-            "html": html_body
-        })
+        assert_safe_frontend_url()
         
-        message_id = response.get("id")
-        log_email_result(
-            db=db,
-            registration_id=registration.registration_id,
-            email_to=registration.email,
-            email_type=email_type,
-            subject=subject,
-            status="SENT",
-            resend_message_id=message_id
-        )
-        return True
-    except Exception as e:
-        logger.error(f"Resend email sending failed for {registration.email}: {e}")
-        log_email_result(
-            db=db,
-            registration_id=registration.registration_id,
-            email_to=registration.email,
-            email_type=email_type,
-            subject=subject,
-            status="FAILED",
-            error_message=str(e)
-        )
-        return False
+        if not config.RESEND_API_KEY or config.RESEND_API_KEY.startswith("re_xxx") or not config.RESEND_API_KEY.strip():
+            # Simulated mode if no valid API key is set
+            print(f"\n--- [EMAIL SIMULATION: {email_type.upper()}] ---")
+            print(f"To: {recipient_email}")
+            print(f"Subject: {subject}")
+            print("API Key not configured or placeholder. Treating as simulated SUCCESS.")
+            print("-------------------------------------------\n")
+            log_email_result(
+                db=db,
+                registration_id=registration.registration_id,
+                email_to=recipient_email,
+                email_type=email_type,
+                subject=subject,
+                status="SENT",
+                resend_message_id="simulated_id_" + secrets.token_hex(8)
+            )
+            return True
+
+        import time
+        max_retries = 4
+        delay = 0.6
+        
+        for attempt in range(max_retries):
+            try:
+                response = resend.Emails.send({
+                    "from": config.FROM_EMAIL,
+                    "to": recipient_email,
+                    "subject": subject,
+                    "html": html_body
+                })
+                
+                message_id = response.get("id")
+                log_email_result(
+                    db=db,
+                    registration_id=registration.registration_id,
+                    email_to=recipient_email,
+                    email_type=email_type,
+                    subject=subject,
+                    status="SENT",
+                    resend_message_id=message_id
+                )
+                return True
+            except Exception as e:
+                err_str = str(e).lower()
+                if "too many requests" in err_str or "rate limit" in err_str or "429" in err_str:
+                    if attempt < max_retries - 1:
+                        time.sleep(delay * (attempt + 1))
+                        continue
+                logger.error(f"Resend email sending failed for {recipient_email}: {e}")
+                log_email_result(
+                    db=db,
+                    registration_id=registration.registration_id,
+                    email_to=recipient_email,
+                    email_type=email_type,
+                    subject=subject,
+                    status="FAILED",
+                    error_message=str(e)
+                )
+                return False
+    finally:
+        db.close()
+
+def _send_email_api_call(db: Session, registration, email_type: str, subject: str, html_body: str) -> bool:
+    """Internal helper to invoke the Resend API for Team Leader and all registered teammates concurrently."""
+    recipients = [registration.email]
+
+    reg_type = getattr(registration, "registration_type", "individual")
+    if reg_type == "team":
+        team_info_str = getattr(registration, "team_info", None)
+        if team_info_str:
+            try:
+                import json
+                team_data = json.loads(team_info_str)
+                members = team_data.get("members", [])
+                for m in members:
+                    m_email = m.get("email")
+                    if m_email:
+                        recipients.append(m_email)
+            except Exception as e:
+                logger.error(f"Error parsing team members: {e}")
+
+    # Remove empty values, invalid email addresses, and duplicates
+    import re
+    valid_email_regex = re.compile(r'^[\w\.-]+@[\w\.-]+\.\w+$')
+    
+    clean_recipients = []
+    seen = set()
+    for r in recipients:
+        if r:
+            r_clean = r.strip().lower()
+            if r_clean and r_clean not in seen and valid_email_regex.match(r_clean):
+                clean_recipients.append(r_clean)
+                seen.add(r_clean)
+
+    # Dispatch concurrently using ThreadPoolExecutor
+    import concurrent.futures
+    
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(clean_recipients))) as executor:
+        futures = {
+            executor.submit(
+                _send_single_email_to_recipient,
+                registration=registration,
+                recipient_email=email,
+                email_type=email_type,
+                subject=subject,
+                html_body=html_body
+            ): email
+            for email in clean_recipients
+        }
+        for future in concurrent.futures.as_completed(futures):
+            email = futures[future]
+            try:
+                success = future.result()
+                results.append(success)
+            except Exception as e:
+                logger.error(f"Error executing email send thread for {email}: {e}")
+                results.append(False)
+
+    return any(results) if results else False
 
 def send_submission_received_email(registration, db: Session):
     subject = f"Response received: {config.EVENT_NAME} - {registration.registration_id}"
@@ -429,6 +783,74 @@ def send_certificate_email(registration, db: Session):
     subject = f"Thank You for Attending {config.EVENT_NAME} | Your Certificate is Ready"
     
     cert_link = frontend_url(f"certificate.html?token={registration.certificate_token}")
+
+    import json
+    reg_type = getattr(registration, "registration_type", "individual")
+    team_name_val = getattr(registration, "team_name", None) or "N/A"
+    team_lead_name = "N/A"
+    teammates_list = []
+    total_members = 1
+
+    if reg_type == "team":
+        team_info_str = getattr(registration, "team_info", None)
+        if team_info_str:
+            try:
+                team_data = json.loads(team_info_str)
+                team_lead_name = team_data.get("team_lead", {}).get("name") or registration.full_name
+                members = team_data.get("members", [])
+                total_members = len(members) + 1
+                for idx, m in enumerate(members):
+                    name = m.get("name")
+                    email_addr = m.get("email")
+                    teammates_list.append(f"{name} ({email_addr})")
+            except Exception as e:
+                print(f"Error parsing team info in email rendering: {e}")
+        else:
+            team_lead_name = registration.full_name
+            teammates_list = []
+    
+    # Render Team section if applicable
+    team_section_html = ""
+    if reg_type == "team":
+        member_rows = ""
+        for idx, m in enumerate(teammates_list):
+            member_rows += f"""
+            <tr style="border-top: 1px solid #e2e8f0;">
+                <td style="padding: 10px 0; color: #334155; font-size: 13px;">
+                    <strong>Member {idx + 2}:</strong> {escape_html(m)}
+                </td>
+            </tr>
+            """
+        
+        team_section_html = f"""
+        <!-- Team Information Card -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc;">
+            <tr>
+                <td style="padding: 20px;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 13px; color: #475569; text-transform: uppercase; font-weight: 800; letter-spacing: 0.08em; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">👥 Team Information</h3>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size: 14px; margin-bottom: 12px;">
+                        <tr>
+                            <td style="padding: 6px 0; color: #64748b; font-weight: 500; width: 40%; vertical-align: top;">Team Name:</td>
+                            <td style="padding: 6px 0; color: #0f172a; font-weight: 700;">{team_name_val}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; color: #64748b; font-weight: 500; vertical-align: top;">Team Leader:</td>
+                            <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">{team_lead_name}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; color: #64748b; font-weight: 500; vertical-align: top;">Total Members:</td>
+                            <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">{total_members}</td>
+                        </tr>
+                    </table>
+                    
+                    <h4 style="margin: 16px 0 8px 0; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em;">Member List</h4>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                        {member_rows}
+                    </table>
+                </td>
+            </tr>
+        </table>
+        """
     
     html_body = f"""<!DOCTYPE html>
 <html>
@@ -436,30 +858,58 @@ def send_certificate_email(registration, db: Session):
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Certificate is Ready</title>
+    <!--[if mso]>
+    <style type="text/css">
+      body, table, td, p, a, div, h1, h2, h3, span {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important; }}
+    </style>
+    <![endif]-->
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #f8fafc;">
-    <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0f172a;">
-        <div style="text-align: center; padding: 20px 0; background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%); border-radius: 12px 12px 0 0; border-bottom: 2px solid #8b5cf6;">
+<body style="margin: 0; padding: 0; -webkit-text-size-adjust: 100%; background-color: #ffffff; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 24px; background-color: #ffffff;">
+        
+        <!-- Header -->
+        <div style="text-align: center; padding: 24px 0; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 16px;">
             <h1 style="margin: 0; font-size: 24px; color: #ffffff; letter-spacing: -0.025em; font-weight: 800;">{escape_html(config.ORGANIZER_NAME)}</h1>
-            <p style="margin: 5px 0 0 0; font-size: 14px; color: #c084fc;">{escape_html(config.EVENT_NAME)}</p>
+            <p style="margin: 5px 0 0 0; font-size: 14px; color: #38bdf8;">{escape_html(config.EVENT_NAME)}</p>
         </div>
         
-        <div style="background-color: #1e293b; padding: 30px; border-radius: 0 0 12px 12px; border: 1px solid #334155; border-top: none;">
-            <p style="margin: 0 0 20px 0; font-size: 16px; color: #f1f5f9;">Hello <strong>{escape_html(registration.full_name)}</strong>,</p>
+        <!-- Main Card -->
+        <div style="background-color: #ffffff; padding: 32px 24px; border-radius: 16px; border: 1px solid #e2e8f0; border-top: none; margin-top: -10px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+            <p style="margin: 0 0 20px 0; font-size: 16px; color: #0f172a;">Hello <strong>{escape_html(registration.full_name)}</strong>,</p>
             
-            <p style="margin: 0 0 15px 0; font-size: 15px; color: #cbd5e1; line-height: 1.6;">Thank you for attending <strong>{escape_html(config.EVENT_NAME)}</strong>.</p>
-            <p style="margin: 0 0 15px 0; font-size: 15px; color: #cbd5e1; line-height: 1.6;">We are glad to have you with us during the workshop. Your participation, energy, and performance were truly appreciated by the Sakra Vision team. We hope this event helped you gain valuable knowledge and practical experience.</p>
-            <p style="margin: 0 0 25px 0; font-size: 15px; color: #cbd5e1; line-height: 1.6;">Your participation certificate is now ready.</p>
+            <p style="margin: 0 0 15px 0; font-size: 15px; color: #475569; line-height: 1.6;">Thank you for attending <strong>{escape_html(config.EVENT_NAME)}</strong>.</p>
+            <p style="margin: 0 0 15px 0; font-size: 15px; color: #475569; line-height: 1.6;">We are glad to have you with us during the workshop. Your participation, energy, and performance were truly appreciated by the Sakra Vision team. We hope this event helped you gain valuable knowledge and practical experience.</p>
+            <p style="margin: 0 0 25px 0; font-size: 15px; color: #475569; line-height: 1.6;">Your participation certificate is now ready.</p>
             
             <div style="text-align: center; margin: 30px 0;">
-                <a href="{cert_link}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <a href="{cert_link}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(37,99,235,0.15);">
                     View & Download Certificate
                 </a>
             </div>
             
+            <!-- Details Card -->
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc;">
+                <tr>
+                    <td style="padding: 20px;">
+                        <h3 style="margin: 0 0 15px 0; font-size: 13px; color: #475569; text-transform: uppercase; font-weight: 800; letter-spacing: 0.08em; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">📋 Registration Details</h3>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size: 14px;">
+                            <tr>
+                                <td style="padding: 6px 0; color: #64748b; width: 40%; vertical-align: top;">Registration ID:</td>
+                                <td style="padding: 6px 0; color: #0f172a; font-weight: 600; font-family: monospace;">{escape_html(registration.registration_id)}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Full Name:</td>
+                                <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">{escape_html(registration.full_name)}</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
 
+            <!-- Team Details Card (Only if Team) -->
+            {team_section_html}
             
-            <hr style="border: 0; border-top: 1px solid #334155; margin: 30px 0 20px 0;">
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0 20px 0;">
             
             <p style="margin: 0; color: #64748b; font-size: 14px; line-height: 1.6;">
                 Thank you once again for being a part of this event.<br><br>

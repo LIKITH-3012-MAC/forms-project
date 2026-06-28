@@ -297,6 +297,11 @@
   <link rel="stylesheet" href="/assets/theme.css">
 </head>
 <body>
+  <div class="particle-bg">
+    <div class="particle" style="width: 100px; height: 100px; left: 10%; top: 15%; animation-duration: 20s;"></div>
+    <div class="particle" style="width: 150px; height: 150px; right: 10%; top: 40%; animation-duration: 28s;"></div>
+    <div class="particle" style="width: 80px; height: 80px; left: 30%; bottom: 15%; animation-duration: 24s;"></div>
+  </div>
   <div class="theme-floating">
     <button id="themeToggle" class="neo-btn neo-btn-icon theme-toggle" aria-label="Toggle theme">
       <span id="themeIcon">🌙</span>
@@ -305,7 +310,7 @@
   <div class="container">
     <h1>Registration Timeline</h1>
 
-    <div class="card">
+    <div class="card glass-panel">
       <div class="meta-box">
         <div>
           <span class="meta-label">Registration ID</span>
@@ -421,6 +426,9 @@
           document.getElementById("timeReview").innerText = "Underway";
           document.getElementById("titleOutcome").innerText = "Verification Pending";
           document.getElementById("descOutcome").innerText = "Review starts once UTR is submitted.";
+          if (!data.is_edit_locked) {
+            document.getElementById("editBtn").style.display = "inline-flex";
+          }
         } else if (paymentStatus === "APPROVED") {
           reviewStep.className = "timeline-item success";
           outcomeStep.className = "timeline-item success";

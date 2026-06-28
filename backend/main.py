@@ -68,6 +68,21 @@ def send_email_background(registration_id: int, email_type: str):
 # Initialize tables
 models.Base.metadata.create_all(bind=engine)
 
+# Seed default settings if not exists
+try:
+    db_seed = SessionLocal()
+    has_enabled = db_seed.query(models.EventSetting).filter(models.EventSetting.setting_key == "team_registration_enabled").first()
+    if not has_enabled:
+        db_seed.add(models.EventSetting(setting_key="team_registration_enabled", setting_value="false"))
+    has_max_size = db_seed.query(models.EventSetting).filter(models.EventSetting.setting_key == "team_registration_max_size").first()
+    if not has_max_size:
+        db_seed.add(models.EventSetting(setting_key="team_registration_max_size", setting_value="4"))
+    db_seed.commit()
+    db_seed.close()
+except Exception as e:
+    print("Seeding settings failed:", e)
+
+
 # Auto-migration: check columns for payment screenshot blobs
 try:
     with engine.connect() as conn:
@@ -111,6 +126,22 @@ try:
         if "ai_receipt_checked_at" not in existing_cols:
             conn.execute(text("ALTER TABLE event_registrations ADD COLUMN ai_receipt_checked_at DATETIME"))
             print("✓ Migration: Added ai_receipt_checked_at to event_registrations.")
+            
+        if "registration_type" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN registration_type VARCHAR(50) DEFAULT 'individual' NOT NULL"))
+            print("✓ Migration: Added registration_type to event_registrations.")
+            
+        if "team_size" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN team_size INT DEFAULT 1 NOT NULL"))
+            print("✓ Migration: Added team_size to event_registrations.")
+            
+        if "team_info" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN team_info TEXT"))
+            print("✓ Migration: Added team_info to event_registrations.")
+            
+        if "team_name" not in existing_cols:
+            conn.execute(text("ALTER TABLE event_registrations ADD COLUMN team_name VARCHAR(255)"))
+            print("✓ Migration: Added team_name to event_registrations.")
             
         # Audit logs migration
         result_audit = conn.execute(text("SHOW COLUMNS FROM registration_audit_logs"))
@@ -373,6 +404,12 @@ async def get_form_config(db: Session = Depends(get_db)):
     deadline_passed = is_deadline_passed()
     form_enabled = not deadline_passed and seats_available > 0
 
+    db_enabled = db.query(models.EventSetting).filter(models.EventSetting.setting_key == "team_registration_enabled").first()
+    team_enabled = (db_enabled.setting_value.lower() in ("true", "1", "yes")) if db_enabled else False
+    
+    db_max_size = db.query(models.EventSetting).filter(models.EventSetting.setting_key == "team_registration_max_size").first()
+    max_size = int(db_max_size.setting_value) if (db_max_size and db_max_size.setting_value.isdigit()) else 4
+
     data = {
         "event_name": config.EVENT_NAME,
         "event_subtitle": config.EVENT_SUBTITLE,
@@ -382,7 +419,9 @@ async def get_form_config(db: Session = Depends(get_db)):
         "deadline": config.EVENT_DEADLINE,
         "seats_total": config.EVENT_SEATS_TOTAL,
         "seats_available": seats_available,
-        "form_enabled": form_enabled
+        "form_enabled": form_enabled,
+        "team_registration_enabled": team_enabled,
+        "team_registration_max_size": max_size
     }
     
     _form_config_cache["time"] = now
@@ -593,6 +632,56 @@ def verify_captcha_token(token: str, remote_ip: str) -> bool:
         print(f"Captcha verification connection error: {e}")
         return False
 
+def validate_team_details(
+    registration_type: str,
+    team_size: int,
+    team_info_str: Optional[str],
+    team_name: Optional[str],
+    db: Session
+):
+    if registration_type == "team":
+        if not team_name or not team_name.strip():
+            return False, "Team Name is required."
+        if len(team_name.strip()) < 2 or len(team_name.strip()) > 100:
+            return False, "Team Name must be between 2 and 100 characters."
+        # Check if team registration is enabled
+        db_enabled = db.query(models.EventSetting).filter(models.EventSetting.setting_key == "team_registration_enabled").first()
+        team_enabled = (db_enabled.setting_value.lower() in ("true", "1", "yes")) if db_enabled else False
+        if not team_enabled:
+            return False, "Team registration is not enabled for this event."
+        
+        # Check maximum team size
+        db_max_size = db.query(models.EventSetting).filter(models.EventSetting.setting_key == "team_registration_max_size").first()
+        max_size = int(db_max_size.setting_value) if (db_max_size and db_max_size.setting_value.isdigit()) else 4
+        if team_size < 1 or team_size > max_size:
+            return False, f"Team size must be between 1 and the configured maximum of {max_size} members."
+        
+        # Validate team_info format
+        if not team_info_str:
+            return False, "Team member information is required."
+        try:
+            team_info = json.loads(team_info_str)
+        except Exception:
+            return False, "Invalid team member information format. Must be JSON."
+        
+        members = team_info.get("members", [])
+        # Team size must match members count + 1 (team lead)
+        if len(members) != team_size - 1:
+            return False, f"Please provide details for all {team_size - 1} team members."
+        
+        for idx, m in enumerate(members):
+            name = m.get("name", "").strip()
+            email = m.get("email", "").strip().lower()
+            if not name:
+                return False, f"Full name is required for Member {idx + 2}."
+            if len(name) < 2 or len(name) > 150:
+                return False, f"Full name for Member {idx + 2} must be between 2 and 150 characters."
+            import re
+            if not email or not re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
+                return False, f"Please enter a valid email address for Member {idx + 2}."
+                
+    return True, ""
+
 @app.post("/api/register")
 @limiter.limit("100/minute")
 async def register_attendee(
@@ -609,6 +698,10 @@ async def register_attendee(
     agreement: bool = Form(...),
     payment_screenshot: UploadFile = File(...),
     captcha_token: Optional[str] = Form(None),
+    registration_type: str = Form("individual"),
+    team_name: Optional[str] = Form(None),
+    team_size: int = Form(1),
+    team_info: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     """Processes new registration submission with payment screenshot upload."""
@@ -657,6 +750,35 @@ async def register_attendee(
 
         if is_deadline_passed():
             return JSONResponse(status_code=400, content={"success": False, "message": "Registration deadline has expired."})
+
+        # Validate team details
+        is_valid, err_msg = validate_team_details(registration_type, team_size, team_info, team_name, db)
+        if not is_valid:
+            return JSONResponse(status_code=400, content={"success": False, "message": err_msg})
+
+        # Process team info db representation
+        if registration_type == "team":
+            members_list = json.loads(team_info).get("members", [])
+            team_info_data = {
+                "registration_type": "team",
+                "team_name": team_name.strip() if team_name else "",
+                "team_size": team_size,
+                "team_lead": {
+                    "name": full_name,
+                    "email": email,
+                    "phone": phone
+                },
+                "members": [
+                    {
+                        "name": m.get("name", "").strip(),
+                        "email": m.get("email", "").strip().lower()
+                    } for m in members_list
+                ]
+            }
+            team_info_db = json.dumps(team_info_data)
+        else:
+            team_info_db = None
+            team_size = 1
 
         # Field validations
         import re
@@ -759,6 +881,10 @@ async def register_attendee(
             payment_screenshot_size=file_size,
             payment_status="PENDING_REVIEW",
             registration_status="SUBMITTED",
+            registration_type=registration_type,
+            team_name=team_name.strip() if (registration_type == "team" and team_name) else None,
+            team_size=team_size,
+            team_info=team_info_db,
             edit_token=generate_secure_token(),
             view_token=generate_secure_token(),
             status_token=generate_secure_token(),
@@ -864,7 +990,13 @@ async def get_response_by_token(view_token: str, db: Session = Depends(get_db)):
             "payment_screenshot_mime": reg.payment_screenshot_mime,
             "payment_status": reg.payment_status,
             "registration_status": reg.registration_status,
-            "created_at": reg.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            "created_at": reg.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "registration_type": reg.registration_type,
+            "team_name": reg.team_name,
+            "team_size": reg.team_size,
+            "team_info": json.loads(reg.team_info) if reg.team_info else None,
+            "status_token": reg.status_token,
+            "edit_token": reg.edit_token
         }
     }
 
@@ -872,7 +1004,9 @@ async def get_response_by_token(view_token: str, db: Session = Depends(get_db)):
 async def get_status_by_token(status_token: str, db: Session = Depends(get_db)):
     """Retrieve timeline and payment status details."""
     reg = db.query(models.EventRegistration).filter(
-        models.EventRegistration.status_token == status_token
+        (models.EventRegistration.status_token == status_token) |
+        (models.EventRegistration.view_token == status_token) |
+        (models.EventRegistration.edit_token == status_token)
     ).first()
 
     if not reg:
@@ -895,7 +1029,11 @@ async def get_status_by_token(status_token: str, db: Session = Depends(get_db)):
             "approved_at": reg.approved_at.strftime("%Y-%m-%d %H:%M:%S") if reg.approved_at else None,
             "rejected_at": reg.rejected_at.strftime("%Y-%m-%d %H:%M:%S") if reg.rejected_at else None,
             "edit_token": reg.edit_token,
-            "view_token": reg.view_token
+            "view_token": reg.view_token,
+            "registration_type": reg.registration_type,
+            "team_name": reg.team_name,
+            "team_size": reg.team_size,
+            "team_info": json.loads(reg.team_info) if reg.team_info else None
         }
     }
 
@@ -931,7 +1069,12 @@ async def get_editable_fields(edit_token: str, db: Session = Depends(get_db)):
             "payment_screenshot_filename": reg.payment_screenshot_filename,
             "payment_screenshot_size": reg.payment_screenshot_size,
             "payment_screenshot_mime": reg.payment_screenshot_mime,
-            "is_edit_locked": reg.is_edit_locked
+            "is_edit_locked": reg.is_edit_locked,
+            "registration_type": reg.registration_type,
+            "team_name": reg.team_name,
+            "team_size": reg.team_size,
+            "team_info": json.loads(reg.team_info) if reg.team_info else None,
+            "status_token": reg.status_token
         }
     }
 
@@ -948,6 +1091,10 @@ async def update_registration(
     upi_reference_id: str = Form(...),
     payment_screenshot: Optional[UploadFile] = File(None),
     request: Request = None,
+    registration_type: str = Form("individual"),
+    team_name: Optional[str] = Form(None),
+    team_size: int = Form(1),
+    team_info: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     """Processes edited responses."""
@@ -960,6 +1107,34 @@ async def update_registration(
 
     if reg.is_edit_locked and config.LOCK_EDIT_AFTER_APPROVAL:
         return JSONResponse(status_code=400, content={"success": False, "message": "Editing is locked for this response."})
+
+    # Validate team details
+    is_valid, err_msg = validate_team_details(registration_type, team_size, team_info, team_name, db)
+    if not is_valid:
+        return JSONResponse(status_code=400, content={"success": False, "message": err_msg})
+
+    if registration_type == "team":
+        members_list = json.loads(team_info).get("members", [])
+        team_info_data = {
+            "registration_type": "team",
+            "team_name": team_name.strip() if team_name else "",
+            "team_size": team_size,
+            "team_lead": {
+                "name": full_name,
+                "email": reg.email,
+                "phone": phone
+            },
+            "members": [
+                {
+                    "name": m.get("name", "").strip(),
+                    "email": m.get("email", "").strip().lower()
+                } for m in members_list
+            ]
+        }
+        team_info_db = json.dumps(team_info_data)
+    else:
+        team_info_db = None
+        team_size = 1
 
     # Field validations
     import re
@@ -1048,6 +1223,10 @@ async def update_registration(
     reg.year = year
     reg.roll_number = roll_number
     reg.upi_reference_id = upi_reference_id
+    reg.registration_type = registration_type
+    reg.team_name = team_name.strip() if (registration_type == "team" and team_name) else None
+    reg.team_size = team_size
+    reg.team_info = team_info_db
     
     if new_screenshot_provided:
         reg.payment_screenshot_blob = new_contents
@@ -1352,7 +1531,10 @@ async def admin_registrations(
             "upi_reference_id": r.upi_reference_id,
             "payment_status": r.payment_status,
             "registration_status": r.registration_status,
-            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "registration_type": r.registration_type,
+            "team_name": r.team_name,
+            "team_size": r.team_size
         })
 
     return {
@@ -1493,10 +1675,228 @@ async def admin_registration_detail(
             "certificate_sent_at": reg.certificate_sent_at.strftime("%Y-%m-%d %H:%M:%S") if reg.certificate_sent_at else None,
             "certificate_token": reg.certificate_token,
             "certificate_download_count": reg.certificate_download_count,
-            "certificate_last_downloaded_at": reg.certificate_last_downloaded_at.strftime("%Y-%m-%d %H:%M:%S") if reg.certificate_last_downloaded_at else None
+            "certificate_last_downloaded_at": reg.certificate_last_downloaded_at.strftime("%Y-%m-%d %H:%M:%S") if reg.certificate_last_downloaded_at else None,
+            "registration_type": reg.registration_type,
+            "team_name": reg.team_name,
+            "team_size": reg.team_size,
+            "team_info": json.loads(reg.team_info) if reg.team_info else None
         },
         "audits": audits_data,
         "emails": emails_data
+    }
+
+@app.get("/api/admin/settings")
+async def get_admin_settings(
+    db: Session = Depends(get_db),
+    admin_auth: dict = Depends(verify_admin_token)
+):
+    """Retrieve event settings for admin panel."""
+    db_enabled = db.query(models.EventSetting).filter(models.EventSetting.setting_key == "team_registration_enabled").first()
+    team_enabled = (db_enabled.setting_value.lower() in ("true", "1", "yes")) if db_enabled else False
+    
+    db_max_size = db.query(models.EventSetting).filter(models.EventSetting.setting_key == "team_registration_max_size").first()
+    max_size = int(db_max_size.setting_value) if (db_max_size and db_max_size.setting_value.isdigit()) else 4
+
+    return {
+        "success": True,
+        "team_registration_enabled": team_enabled,
+        "team_registration_max_size": max_size
+    }
+
+@app.post("/api/admin/settings")
+async def update_admin_settings(
+    payload: schemas.AdminSettingsUpdate,
+    db: Session = Depends(get_db),
+    admin_auth: dict = Depends(verify_admin_token)
+):
+    """Update event settings from admin panel."""
+    db_enabled = db.query(models.EventSetting).filter(models.EventSetting.setting_key == "team_registration_enabled").first()
+    if not db_enabled:
+        db_enabled = models.EventSetting(setting_key="team_registration_enabled")
+        db.add(db_enabled)
+    db_enabled.setting_value = "true" if payload.team_registration_enabled else "false"
+
+    db_max_size = db.query(models.EventSetting).filter(models.EventSetting.setting_key == "team_registration_max_size").first()
+    if not db_max_size:
+        db_max_size = models.EventSetting(setting_key="team_registration_max_size")
+        db.add(db_max_size)
+    db_max_size.setting_value = str(payload.team_registration_max_size)
+
+    db.commit()
+    return {
+        "success": True,
+        "message": "Settings updated successfully",
+        "team_registration_enabled": payload.team_registration_enabled,
+        "team_registration_max_size": payload.team_registration_max_size
+    }
+
+@app.put("/api/admin/registration/{registration_id}")
+async def admin_update_registration(
+    registration_id: str,
+    payload: schemas.AdminRegistrationUpdate,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin_auth: dict = Depends(verify_admin_token)
+):
+    """Edit registration details from admin panel."""
+    reg = db.query(models.EventRegistration).filter(
+        models.EventRegistration.registration_id == registration_id
+    ).first()
+
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration record not found.")
+
+    old_data = {
+        "full_name": reg.full_name,
+        "email": reg.email,
+        "phone": reg.phone,
+        "college": reg.college,
+        "department": reg.department,
+        "year": reg.year,
+        "roll_number": reg.roll_number,
+        "upi_reference_id": reg.upi_reference_id,
+        "registration_type": reg.registration_type,
+        "team_name": reg.team_name,
+        "team_size": reg.team_size,
+        "team_info": reg.team_info
+    }
+
+    # Update fields if provided
+    if payload.full_name is not None:
+        reg.full_name = payload.full_name.strip()
+    if payload.email is not None:
+        reg.email = payload.email.strip().lower()
+    if payload.phone is not None:
+        import re
+        reg.phone = re.sub(r"\s+", "", payload.phone)
+    if payload.college is not None:
+        reg.college = payload.college.strip()
+    if payload.department is not None:
+        reg.department = payload.department.strip()
+    if payload.year is not None:
+        reg.year = payload.year
+    if payload.roll_number is not None:
+        reg.roll_number = payload.roll_number.strip() if payload.roll_number else None
+    if payload.upi_reference_id is not None:
+        reg.upi_reference_id = payload.upi_reference_id.strip().upper()
+
+    # Handle team details update
+    if payload.registration_type is not None:
+        reg.registration_type = payload.registration_type
+    if payload.team_name is not None:
+        reg.team_name = payload.team_name.strip() if payload.team_name else None
+    if payload.team_size is not None:
+        reg.team_size = payload.team_size
+    
+    if payload.registration_type == "team" or (payload.registration_type is None and reg.registration_type == "team"):
+        t_size = reg.team_size
+        t_name = reg.team_name or ""
+        t_info_str = payload.team_info if payload.team_info is not None else reg.team_info
+        
+        # Validate team size matches the members count
+        if t_info_str:
+            try:
+                t_info = json.loads(t_info_str)
+                members_list = t_info.get("members", [])
+                team_info_data = {
+                    "registration_type": "team",
+                    "team_name": t_name,
+                    "team_size": t_size,
+                    "team_lead": {
+                        "name": reg.full_name,
+                        "email": reg.email,
+                        "phone": reg.phone
+                    },
+                    "members": [
+                        {
+                            "name": m.get("name", "").strip(),
+                            "email": m.get("email", "").strip().lower()
+                        } for m in members_list
+                    ]
+                }
+                reg.team_info = json.dumps(team_info_data)
+                reg.team_size = len(members_list) + 1
+            except Exception as e:
+                raise HTTPException(status_code=400, detail="Invalid team_info format or JSON invalid.")
+    else:
+        reg.team_info = None
+        reg.team_size = 1
+        reg.team_name = None
+
+    db.commit()
+    db.refresh(reg)
+
+    client_ip = get_client_ip(request)
+    actor_email = admin_auth.get("email")
+    actor_role = admin_auth.get("role")
+    actor_user_id = admin_auth.get("user_id")
+    user_agent = request.headers.get("user-agent", "Unknown")
+    performed_by = f"{actor_role}: {actor_email}"
+
+    audit = models.RegistrationAuditLog(
+        registration_id=registration_id,
+        action="ADMIN_EDITED",
+        old_data=json.dumps(old_data),
+        new_data=json.dumps({
+            "full_name": reg.full_name,
+            "email": reg.email,
+            "phone": reg.phone,
+            "college": reg.college,
+            "department": reg.department,
+            "year": reg.year,
+            "roll_number": reg.roll_number,
+            "upi_reference_id": reg.upi_reference_id,
+            "registration_type": reg.registration_type,
+            "team_name": reg.team_name,
+            "team_size": reg.team_size,
+            "team_info": reg.team_info
+        }),
+        performed_by=performed_by,
+        ip_address=client_ip,
+        actor_user_id=actor_user_id,
+        actor_email=actor_email,
+        actor_role=actor_role,
+        action_type="ADMIN_EDITED",
+        action_message=f"{actor_email} edited registration details for {registration_id}",
+        changes_json=json.dumps({
+            "full_name": reg.full_name,
+            "email": reg.email,
+            "phone": reg.phone
+        }),
+        user_agent=user_agent
+    )
+    db.add(audit)
+    db.commit()
+
+    background_tasks.add_task(
+        trigger_voice_call_background,
+        reg.id,
+        actor_email,
+        actor_role,
+        actor_user_id,
+        client_ip,
+        user_agent
+    )
+
+    return {
+        "success": True,
+        "message": "Registration details updated successfully by admin",
+        "registration": {
+            "registration_id": reg.registration_id,
+            "full_name": reg.full_name,
+            "email": reg.email,
+            "phone": reg.phone,
+            "college": reg.college,
+            "department": reg.department,
+            "year": reg.year,
+            "roll_number": reg.roll_number,
+            "upi_reference_id": reg.upi_reference_id,
+            "registration_type": reg.registration_type,
+            "team_name": reg.team_name,
+            "team_size": reg.team_size,
+            "team_info": json.loads(reg.team_info) if reg.team_info else None
+        }
     }
 
 @app.post("/api/admin/approve/{registration_id}")
@@ -1564,6 +1964,17 @@ async def admin_approve_payment(
     # Trigger approval email in background task
     background_tasks.add_task(send_email_background, reg.id, "payment_approved")
 
+    # Trigger AI Voice Agent call in background task
+    background_tasks.add_task(
+        trigger_voice_call_background,
+        reg.id,
+        actor_email,
+        actor_role,
+        actor_user_id,
+        client_ip,
+        user_agent
+    )
+
     return {
         "success": True,
         "message": "Payment verified and registration confirmed successfully",
@@ -1629,6 +2040,17 @@ async def admin_reject_payment(
     # Trigger rejection email in background task
     background_tasks.add_task(send_email_background, reg.id, "payment_rejected")
 
+    # Trigger AI Voice Agent call in background task
+    background_tasks.add_task(
+        trigger_voice_call_background,
+        reg.id,
+        actor_email,
+        actor_role,
+        actor_user_id,
+        client_ip,
+        user_agent
+    )
+
     return {
         "success": True,
         "message": "Registration rejected successfully",
@@ -1691,6 +2113,17 @@ async def admin_mark_correction(
 
     # Trigger correction email in background task
     background_tasks.add_task(send_email_background, reg.id, "needs_correction")
+
+    # Trigger AI Voice Agent call in background task
+    background_tasks.add_task(
+        trigger_voice_call_background,
+        reg.id,
+        actor_email,
+        actor_role,
+        actor_user_id,
+        client_ip,
+        user_agent
+    )
 
     return {
         "success": True,
@@ -1874,6 +2307,145 @@ def dispatch_call_sync(api_key: str, agent_id: int, to_number: str, call_context
     except Exception as e:
         return 500, {"detail": str(e)}
 
+def trigger_voice_call_background(
+    registration_db_id: int,
+    actor_email: str,
+    actor_role: str,
+    actor_user_id: int,
+    client_ip: str,
+    user_agent: str
+):
+    import json
+    db = SessionLocal()
+    try:
+        reg = db.query(models.EventRegistration).filter(models.EventRegistration.id == registration_db_id).first()
+        if not reg:
+            print(f"Registration ID {registration_db_id} not found for background AI call trigger.")
+            return
+
+        phone = reg.phone.strip()
+        # Normalize phone number to include country code (defaulting to +91)
+        normalized_phone = phone.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+        if normalized_phone.startswith("+"):
+            pass
+        elif len(normalized_phone) == 10 and normalized_phone.isdigit():
+            normalized_phone = "+91" + normalized_phone
+        elif len(normalized_phone) == 12 and normalized_phone.startswith("91") and normalized_phone.isdigit():
+            normalized_phone = "+" + normalized_phone
+        else:
+            normalized_phone = "+91" + normalized_phone
+
+        reg_status = "pending"
+        if reg.registration_status in ("CONFIRMED", "APPROVED"):
+            reg_status = "approved"
+        elif reg.registration_status == "REJECTED":
+            reg_status = "rejected"
+        elif reg.registration_status == "NEEDS_CORRECTION":
+            reg_status = "correction required"
+            
+        pay_status = "pending"
+        if reg.payment_status == "APPROVED":
+            pay_status = "approved"
+        elif reg.payment_status == "NEEDS_CORRECTION":
+            pay_status = "correction required"
+        elif reg.payment_status == "REJECTED":
+            pay_status = "rejected"
+
+        parsed_team_info = json.loads(reg.team_info) if reg.team_info else {}
+        team_members_list = parsed_team_info.get("members", [])
+        members_payload = []
+        if reg.registration_type == "team":
+            members_payload.append({
+                "name": reg.full_name,
+                "email": reg.email
+            })
+            for m in team_members_list:
+                members_payload.append({
+                    "name": m.get("name", ""),
+                    "email": m.get("email", "")
+                })
+        else:
+            members_payload = [{
+                "name": reg.full_name,
+                "email": reg.email
+            }]
+
+        call_context = {
+            "customer_name": reg.full_name,
+            "customer_email": reg.email,
+            "customer_phone": reg.phone,
+            "team_name": reg.team_name or "",
+            "team_lead": reg.full_name,
+            "team_size": reg.team_size,
+            "members": members_payload,
+            "event_name": reg.event_name,
+            "event_description": config.EVENT_DESCRIPTION,
+            "event_date": "15 July 2026",
+            "event_time": "10:00 AM",
+            "slot_time": "10:00 AM - 11:00 AM",
+            "venue_name": "Sakra Vision Innovation Center",
+            "venue_address": "Hyderabad",
+            "meeting_link": "",
+            "registration_status": reg_status,
+            "payment_status": pay_status,
+            "admin_message": reg.admin_note or "",
+            "email_sent": True if (reg.email_status == "SENT" or reg.payment_status in ("APPROVED", "REJECTED", "NEEDS_CORRECTION")) else False,
+            "support_number": "9440113763",
+            "founder_name": "Likith Naidu",
+            "organization_name": "Sakra Vision"
+        }
+
+        api_key = config.OMNI_API_KEY
+        agent_id_str = config.OMNI_AGENT_ID
+
+        if not api_key or not agent_id_str:
+            message = "Simulated AI agent call: API credentials not fully configured in Render environment."
+            call_response = {"simulated": True, "status": "pending"}
+        else:
+            try:
+                agent_id = int(agent_id_str)
+                status_code, call_response = dispatch_call_sync(api_key, agent_id, normalized_phone, call_context)
+                if status_code in (200, 201):
+                    message = "AI agent call dispatched successfully"
+                else:
+                    detail = call_response.get("detail") or str(call_response)
+                    message = f"OmniDimension API dispatch failed (Status {status_code}): {detail}"
+            except Exception as e:
+                message = f"Failed to initiate calling flow: {str(e)}"
+                call_response = {"error": str(e)}
+
+        performed_by = f"{actor_role}: {actor_email}" if actor_role and actor_email else "system"
+        audit = models.RegistrationAuditLog(
+            registration_id=reg.registration_id,
+            action="AI_AGENT_CALL",
+            new_data=json.dumps({
+                "message": message,
+                "to_number": normalized_phone,
+                "call_context": call_context,
+                "response": call_response
+            }),
+            performed_by=performed_by,
+            ip_address=client_ip,
+            actor_user_id=actor_user_id,
+            actor_email=actor_email,
+            actor_role=actor_role,
+            action_type="AI_AGENT_CALL",
+            action_message=f"System automatically triggered AI call for {reg.registration_id}" if actor_email == "system" else f"{actor_email} triggered AI call for {reg.registration_id}",
+            changes_json=json.dumps({
+                "message": message,
+                "to_number": normalized_phone
+            }),
+            user_agent=user_agent
+        )
+        db.add(audit)
+        db.commit()
+        print(f"Background AI agent call trigger finished: {message}")
+    except Exception as e:
+        print(f"Background AI agent call trigger failed: {repr(e)}")
+        db.rollback()
+    finally:
+        db.close()
+
 @app.post("/api/admin/call/{registration_id}")
 async def admin_call_registrant(
     registration_id: str,
@@ -1908,13 +2480,64 @@ async def admin_call_registrant(
     else:
         normalized_phone = "+91" + normalized_phone
 
+    reg_status = "pending"
+    if reg.registration_status in ("CONFIRMED", "APPROVED"):
+        reg_status = "approved"
+    elif reg.registration_status == "REJECTED":
+        reg_status = "rejected"
+    elif reg.registration_status == "NEEDS_CORRECTION":
+        reg_status = "correction required"
+        
+    pay_status = "pending"
+    if reg.payment_status == "APPROVED":
+        pay_status = "approved"
+    elif reg.payment_status == "NEEDS_CORRECTION":
+        pay_status = "correction required"
+    elif reg.payment_status == "REJECTED":
+        pay_status = "rejected"
+
+    parsed_team_info = json.loads(reg.team_info) if reg.team_info else {}
+    team_members_list = parsed_team_info.get("members", [])
+    members_payload = []
+    if reg.registration_type == "team":
+        members_payload.append({
+            "name": reg.full_name,
+            "email": reg.email
+        })
+        for m in team_members_list:
+            members_payload.append({
+                "name": m.get("name", ""),
+                "email": m.get("email", "")
+            })
+    else:
+        members_payload = [{
+            "name": reg.full_name,
+            "email": reg.email
+        }]
+
     call_context = {
         "customer_name": reg.full_name,
-        "registration_id": reg.registration_id,
+        "customer_email": reg.email,
+        "customer_phone": reg.phone,
+        "team_name": reg.team_name or "",
+        "team_lead": reg.full_name,
+        "team_size": reg.team_size,
+        "members": members_payload,
         "event_name": reg.event_name,
-        "payment_status": reg.payment_status.replace("_", " "),
-        "upi_reference_id": reg.upi_reference_id,
-        "admin_note": reg.admin_note or "Please review your payment reference details."
+        "event_description": config.EVENT_DESCRIPTION,
+        "event_date": "15 July 2026",
+        "event_time": "10:00 AM",
+        "slot_time": "10:00 AM - 11:00 AM",
+        "venue_name": "Sakra Vision Innovation Center",
+        "venue_address": "Hyderabad",
+        "meeting_link": "",
+        "registration_status": reg_status,
+        "payment_status": pay_status,
+        "admin_message": reg.admin_note or "",
+        "email_sent": True if (reg.email_status == "SENT" or reg.payment_status in ("APPROVED", "REJECTED", "NEEDS_CORRECTION")) else False,
+        "support_number": "9440113763",
+        "founder_name": "Likith Naidu",
+        "organization_name": "Sakra Vision"
     }
 
     api_key = config.OMNI_API_KEY

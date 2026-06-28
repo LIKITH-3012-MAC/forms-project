@@ -585,9 +585,26 @@
       from { transform: translateX(100%); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
+  <script>
+    (function() {
+      const storedTheme = localStorage.getItem("event-theme") || "dark";
+      document.documentElement.setAttribute("data-theme", storedTheme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/assets/theme.css">
   </style>
 </head>
 <body class="loading">
+  <div class="theme-floating">
+    <button id="themeToggle" class="neo-btn neo-btn-icon theme-toggle" aria-label="Toggle theme">
+      <span id="themeIcon">🌙</span>
+    </button>
+  </div>
+  <div class="particle-bg">
+    <div class="particle" style="width: 100px; height: 100px; left: 10%; top: 15%; animation-duration: 20s;"></div>
+    <div class="particle" style="width: 150px; height: 150px; right: 10%; top: 40%; animation-duration: 28s;"></div>
+    <div class="particle" style="width: 80px; height: 80px; left: 30%; bottom: 15%; animation-duration: 24s;"></div>
+  </div>
 
   <header>
     <div class="brand-title">

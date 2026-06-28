@@ -90,6 +90,11 @@ class AdminAction(BaseModel):
     admin_note: Optional[str] = Field(default="", max_length=2000)
 
 
+class AdminSettingsUpdate(BaseModel):
+    team_registration_enabled: bool
+    team_registration_max_size: int
+
+
 class AdminLogin(BaseModel):
     admin_password: Optional[str] = None
     email: Optional[str] = None
@@ -107,4 +112,20 @@ class UserChangePassword(BaseModel):
 
 class UserStatusUpdate(BaseModel):
     enabled: bool
+
+
+class AdminRegistrationUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    college: Optional[str] = None
+    department: Optional[str] = None
+    year: Optional[str] = None
+    roll_number: Optional[str] = None
+    upi_reference_id: Optional[str] = None
+    registration_type: Optional[str] = None
+    team_name: Optional[str] = None
+    team_size: Optional[int] = None
+    team_info: Optional[str] = None
+
 

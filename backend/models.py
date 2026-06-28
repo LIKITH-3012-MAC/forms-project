@@ -27,6 +27,11 @@ class EventRegistration(Base):
     payment_screenshot_mime = Column(String(100), nullable=True)
     payment_screenshot_size = Column(Integer, nullable=True)
     
+    registration_type = Column(String(50), default="individual", nullable=False)
+    team_name = Column(String(255), nullable=True, index=True)
+    team_size = Column(Integer, default=1, nullable=False)
+    team_info = Column(Text, nullable=True)
+    
     payment_status = Column(String(50), default="PENDING_REVIEW", index=True) # PENDING_REVIEW, APPROVED, REJECTED, NEEDS_CORRECTION
     registration_status = Column(String(50), default="SUBMITTED", index=True) # SUBMITTED, UPDATED, CONFIRMED, REJECTED, CANCELLED
     email_status = Column(String(50), default="NOT_SENT") # NOT_SENT, SENT, FAILED
@@ -127,3 +132,10 @@ class User(Base):
     mustChangePassword = Column(Boolean, default=True, nullable=False)
     createdAt = Column(DateTime, default=get_ist_time)
     updatedAt = Column(DateTime, default=get_ist_time, onupdate=get_ist_time)
+
+class EventSetting(Base):
+    __tablename__ = "event_settings"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    setting_key = Column(String(100), unique=True, index=True, nullable=False)
+    setting_value = Column(Text, nullable=True)

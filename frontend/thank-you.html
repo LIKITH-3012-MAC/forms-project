@@ -575,17 +575,17 @@
         ctx.fillText(val, x, y + 26);
       }
       
-      drawField("Attendee Name", registrationData.full_name, 60, 250);
-      drawField("Ticket ID", registrationData.registration_id, 450, 250);
+      drawField("Attendee Name", registrationData.full_name || "", 60, 250);
+      drawField("Ticket ID", registrationData.registration_id || "", 450, 250);
       
-      drawField("Email Address", registrationData.email, 60, 350);
-      drawField("College Name", registrationData.college, 450, 350);
+      drawField("Email Address", registrationData.email || "", 60, 350);
+      drawField("College Name", registrationData.college || "", 450, 350);
       
-      drawField("Payment Status", registrationData.payment_status.replace("_", " "), 60, 450);
-      drawField("Amount Paid", "₹" + registrationData.amount, 450, 450);
+      drawField("Payment Status", registrationData.payment_status ? registrationData.payment_status.replace("_", " ") : "", 60, 450);
+      drawField("Amount Paid", "₹" + (registrationData.amount || 0), 450, 450);
       
-      drawField("Transaction UTR", registrationData.upi_reference_id, 60, 550);
-      drawField("Date Registered", new Date(registrationData.created_at).toLocaleString(), 450, 550);
+      drawField("Transaction UTR", registrationData.upi_reference_id || "", 60, 550);
+      drawField("Date Registered", registrationData.created_at ? new Date(registrationData.created_at.replace(/-/g, "/")).toLocaleString() : "", 450, 550);
       
       // Barcode
       ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
@@ -665,14 +665,14 @@
         registrationData = data;
 
         // Populate Ticket elements
-        document.getElementById("ticketName").innerText = data.full_name;
-        document.getElementById("ticketId").innerText = data.registration_id;
-        document.getElementById("ticketEmail").innerText = data.email;
-        document.getElementById("ticketCollege").innerText = data.college;
-        document.getElementById("ticketStatus").innerText = data.payment_status.replace("_", " ");
-        document.getElementById("ticketAmount").innerText = "₹" + data.amount;
-        document.getElementById("ticketUtr").innerText = data.upi_reference_id;
-        document.getElementById("barcodeVal").innerText = data.registration_id;
+        document.getElementById("ticketName").innerText = data.full_name || "";
+        document.getElementById("ticketId").innerText = data.registration_id || "";
+        document.getElementById("ticketEmail").innerText = data.email || "";
+        document.getElementById("ticketCollege").innerText = data.college || "";
+        document.getElementById("ticketStatus").innerText = data.payment_status ? data.payment_status.replace("_", " ") : "";
+        document.getElementById("ticketAmount").innerText = "₹" + (data.amount || 0);
+        document.getElementById("ticketUtr").innerText = data.upi_reference_id || "";
+        document.getElementById("barcodeVal").innerText = data.registration_id || "";
         
         // Show ticket
         document.getElementById("ticketUI").style.display = "block";

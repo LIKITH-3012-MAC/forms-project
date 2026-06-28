@@ -510,11 +510,23 @@
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
+
+    #phoneTeamNotice.expanded {
+      max-height: 500px !important;
+      opacity: 1 !important;
+      padding: 16px !important;
+      margin-top: 10px !important;
+    }
   </style>
   <link rel="stylesheet" href="/assets/theme.css">
   <link rel="stylesheet" href="/assets/performance.css">
 </head>
 <body>
+  <div class="particle-bg">
+    <div class="particle" style="width: 100px; height: 100px; left: 10%; top: 15%; animation-duration: 20s;"></div>
+    <div class="particle" style="width: 150px; height: 150px; right: 10%; top: 40%; animation-duration: 28s;"></div>
+    <div class="particle" style="width: 80px; height: 80px; left: 30%; bottom: 15%; animation-duration: 24s;"></div>
+  </div>
   <div class="theme-floating">
     <button id="themeToggle" class="neo-btn neo-btn-icon theme-toggle" aria-label="Toggle theme">
       <span id="themeIcon">🌙</span>
@@ -536,7 +548,7 @@
       <div class="step" id="step3-indicator">3</div>
     </div>
 
-    <form id="regForm" class="card" onsubmit="return false;">
+    <form id="regForm" class="card glass-panel" onsubmit="return false;">
       <!-- STEP 1: Personal Details -->
       <div class="form-step active" id="step1">
         <div class="form-group">
@@ -555,6 +567,23 @@
           <label class="required" for="phone">Phone Number</label>
           <input type="tel" id="phone" required placeholder="9876543210" />
           <div class="error-msg" id="phone-error">Please enter a valid 10-digit mobile number.</div>
+          <div id="phoneTeamNotice" style="display: block; max-height: 0; opacity: 0; overflow: hidden; font-size: 13px; line-height: 1.6; color: var(--text-muted); border: 1px solid rgba(99, 102, 241, 0.15); border-left: 4px solid var(--primary); border-radius: 10px; background: rgba(99, 102, 241, 0.02); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-sizing: border-box; transition: max-height 0.4s ease, opacity 0.4s ease, padding 0.4s ease, margin-top 0.4s ease; padding: 0 16px;">
+            <div style="font-weight: 700; color: #ffffff; margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+              <span>📱</span> Team Leader Contact
+            </div>
+            <p style="margin-bottom: 12px;">This number will be used for all important event updates.</p>
+            <p style="margin-bottom: 8px; font-weight: 600; color: #ffffff;">Your Team Leader may receive:</p>
+            <ul style="margin-left: 20px; margin-bottom: 12px; list-style-type: none; padding-left: 0;">
+              <li style="margin-bottom: 6px;">📞 AI voice confirmations</li>
+              <li style="margin-bottom: 6px;">📧 Registration & payment emails</li>
+              <li style="margin-bottom: 6px;">✅ Payment status updates</li>
+              <li style="margin-bottom: 6px;">📅 Slot allocation details</li>
+              <li style="margin-bottom: 6px;">📍 Venue or meeting information</li>
+              <li style="margin-bottom: 6px;">📢 Organizer announcements</li>
+              <li style="margin-bottom: 6px;">🔔 Event reminders</li>
+            </ul>
+            <p style="margin-bottom: 0;">Only the <strong>Team Leader's</strong> mobile number is required. Please enter an active number that can receive calls and messages.</p>
+          </div>
         </div>
 
         <div class="form-group">
@@ -584,6 +613,50 @@
             <div>
               <label for="roll_number">Roll Number</label>
               <input type="text" id="roll_number" placeholder="CS22B1042" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Team Registration Section -->
+        <div id="teamRegistrationContainer" style="display: none; border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 20px; padding-top: 20px;">
+          <label style="font-weight: 600; display: block; margin-bottom: 12px; color: var(--primary);">Registration Type</label>
+          <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="radio" name="registration_type" value="individual" checked onchange="toggleFormRegType()" style="width: auto; cursor: pointer;" />
+              Individual Registration
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="radio" name="registration_type" value="team" onchange="toggleFormRegType()" style="width: auto; cursor: pointer;" />
+              Team Registration
+            </label>
+          </div>
+          
+          <div id="teamFieldsContainer" style="display: none;">
+            <div class="form-group">
+              <label class="required" for="team_name">Team Name</label>
+              <input type="text" id="team_name" placeholder="Alpha Coders" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 16px; font-size: 14px; color: #ffffff; width: 100%;" />
+            </div>
+
+            <div class="form-group">
+              <label for="team_leader_display">Team Leader Name</label>
+              <input type="text" id="team_leader_display" readonly placeholder="Same as Full Name above" style="background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 10px; padding: 12px 16px; font-size: 14px; color: #aaaaaa; width: 100%; cursor: not-allowed;" />
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Automatically populated from the "Full Name" field above.</div>
+            </div>
+
+            <div class="form-group">
+              <label for="teamSizeSelect">Number of Team Members</label>
+              <select id="teamSizeSelect" onchange="generateTeamMemberFields()" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 16px; font-size: 14px; color: #ffffff; width: 100%;">
+                <!-- Populated dynamically by JS -->
+              </select>
+            </div>
+            
+            <div id="teamMembersInputs">
+              <!-- Dynamic inputs will be generated here -->
+            </div>
+
+            <!-- Registration Notice -->
+            <div style="margin-top: 20px; padding: 16px; border: 1px solid rgba(139, 92, 246, 0.15); border-left: 4px solid var(--primary-2); border-radius: 12px; background: rgba(139, 92, 246, 0.02); font-size: 13px; line-height: 1.6; color: var(--text-muted);">
+              <p>Your Team Leader will receive all important updates, including automated emails, AI voice confirmations, payment status notifications, slot allocation, venue information, and event reminders. Please ensure that the Team Leader's mobile number is active and reachable.</p>
             </div>
           </div>
         </div>
@@ -1058,6 +1131,27 @@
         // Dynamic update of agreement label to reflect eventConfig amount
         document.getElementById("agreementLabel").innerText = `I certify that the UTR/Reference ID provided matches my uploaded payment screenshot and represents a successful fee transfer of ₹${eventConfig.event_amount}.`;
 
+        // Configure team settings dynamically
+        if (eventConfig.team_registration_enabled) {
+          document.getElementById("teamRegistrationContainer").style.display = "block";
+          document.getElementById("phoneTeamNotice").style.display = "block";
+          
+          // Generate select dropdown options up to max team size
+          const sizeSelect = document.getElementById("teamSizeSelect");
+          sizeSelect.innerHTML = "";
+          for (let i = 2; i <= eventConfig.team_registration_max_size; i++) {
+            sizeSelect.innerHTML += `<option value="${i}">${i} members</option>`;
+          }
+          if (eventConfig.team_registration_max_size < 2) {
+            // Maximum size is 1 or misconfigured
+            document.getElementById("teamRegistrationContainer").style.display = "none";
+            document.getElementById("phoneTeamNotice").style.display = "none";
+          }
+        } else {
+          document.getElementById("teamRegistrationContainer").style.display = "none";
+          document.getElementById("phoneTeamNotice").style.display = "none";
+        }
+
         if (!eventConfig.form_enabled) {
           showToast("Registration is currently disabled or deadline has passed.", "danger");
           document.querySelector("button").disabled = true;
@@ -1224,6 +1318,39 @@
         `;
       }
 
+      // Add team registration information to review list
+      const hasTeamReg = document.getElementById("teamRegistrationContainer").style.display !== "none";
+      if (hasTeamReg) {
+        const regType = document.querySelector('input[name="registration_type"]:checked')?.value || "individual";
+        listContainer.innerHTML += `
+          <div class="review-item">
+            <span class="review-label">Registration Type</span>
+            <span class="review-value">${regType === "team" ? "Team Registration" : "Individual Registration"}</span>
+          </div>
+        `;
+        if (regType === "team") {
+          const size = parseInt(document.getElementById("teamSizeSelect").value);
+          listContainer.innerHTML += `
+            <div class="review-item">
+              <span class="review-label">Team Size</span>
+              <span class="review-value">${size} members</span>
+            </div>
+          `;
+          const nameInputs = document.querySelectorAll(".member-name-input");
+          const emailInputs = document.querySelectorAll(".member-email-input");
+          for (let i = 0; i < size - 1; i++) {
+            const name = nameInputs[i].value.trim();
+            const email = emailInputs[i].value.trim();
+            listContainer.innerHTML += `
+              <div class="review-item" style="border-left: 2px solid var(--primary); padding-left: 8px;">
+                <span class="review-label">Member ${i + 2}</span>
+                <span class="review-value">${escapeHtml(name)} (${escapeHtml(email)})</span>
+              </div>
+            `;
+          }
+        }
+      }
+
       document.getElementById("reviewModal").classList.add("active");
     }
 
@@ -1274,6 +1401,46 @@
         const captcha_token = document.querySelector('[name="cf-turnstile-response"]')?.value || "";
         payload.append("captcha_token", captcha_token);
 
+        // Include team registration fields in FormData payload if enabled by admin
+        const hasTeamReg = document.getElementById("teamRegistrationContainer").style.display !== "none";
+        if (hasTeamReg) {
+          const regType = document.querySelector('input[name="registration_type"]:checked')?.value || "individual";
+          payload.append("registration_type", regType);
+          
+          if (regType === "team") {
+            const teamNameVal = document.getElementById("team_name").value.trim();
+            if (!teamNameVal) {
+              throw new Error("Team Name is required.");
+            }
+            payload.append("team_name", teamNameVal);
+            const size = parseInt(document.getElementById("teamSizeSelect").value);
+            payload.append("team_size", size);
+            
+            const nameInputs = document.querySelectorAll(".member-name-input");
+            const emailInputs = document.querySelectorAll(".member-email-input");
+            const members = [];
+            
+            for (let i = 0; i < size - 1; i++) {
+              const name = nameInputs[i].value.trim();
+              const email = emailInputs[i].value.trim().toLowerCase();
+              if (!name || !email) {
+                throw new Error(`Please fill out details for Member ${i + 2}.`);
+              }
+              members.push({ name, email });
+            }
+            payload.append("team_info", JSON.stringify({ members }));
+          } else {
+            payload.append("team_size", 1);
+            payload.append("team_info", "");
+            payload.append("team_name", "");
+          }
+        } else {
+          payload.append("registration_type", "individual");
+          payload.append("team_size", 1);
+          payload.append("team_info", "");
+          payload.append("team_name", "");
+        }
+
         const response = await fetch(`${CONFIG.BACKEND_URL}/api/register`, {
           method: "POST",
           body: payload
@@ -1301,7 +1468,11 @@
         }
 
         setTimeout(() => {
-          window.location.href = data.redirect_url;
+          let redirectUrl = data.redirect_url;
+          if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+            redirectUrl = redirectUrl.replace("https://forms-project-f3sb.vercel.app", window.location.origin);
+          }
+          window.location.href = redirectUrl;
         }, 800);
 
       } catch (error) {
@@ -1324,9 +1495,70 @@
       }
     }
 
+    function toggleFormRegType() {
+      const regType = document.querySelector('input[name="registration_type"]:checked').value;
+      const teamFieldsContainer = document.getElementById("teamFieldsContainer");
+      if (regType === "team") {
+        teamFieldsContainer.style.display = "block";
+        generateTeamMemberFields();
+      } else {
+        teamFieldsContainer.style.display = "none";
+      }
+    }
+
+    function generateTeamMemberFields() {
+      const size = parseInt(document.getElementById("teamSizeSelect").value);
+      const container = document.getElementById("teamMembersInputs");
+      container.innerHTML = "";
+      
+      // Need size - 1 inputs
+      for (let i = 0; i < size - 1; i++) {
+        container.innerHTML += `
+          <div style="border-top: 1px dashed rgba(255,255,255,0.08); margin-top: 15px; padding-top: 15px;">
+            <div style="font-weight: 500; font-size: 13px; color: var(--primary); margin-bottom: 10px;">Member ${i + 2} Details</div>
+            <div class="form-group">
+              <label class="required">Full Name</label>
+              <input type="text" class="member-name-input" required placeholder="Full Name" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 16px; font-size: 14px; color: #ffffff; width: 100%;" />
+            </div>
+            <div class="form-group">
+              <label class="required">Email Address</label>
+              <input type="email" class="member-email-input" required placeholder="member@gmail.com" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 16px; font-size: 14px; color: #ffffff; width: 100%;" />
+            </div>
+          </div>
+        `;
+      }
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
       loadConfig();
       restoreDraft();
+      
+      const fullNameInput = document.getElementById("full_name");
+      const teamLeaderDisplay = document.getElementById("team_leader_display");
+      if (fullNameInput && teamLeaderDisplay) {
+        fullNameInput.addEventListener("input", () => {
+          teamLeaderDisplay.value = fullNameInput.value.trim();
+        });
+      }
+
+      const phoneInput = document.getElementById("phone");
+      const phoneNotice = document.getElementById("phoneTeamNotice");
+      if (phoneInput && phoneNotice) {
+        phoneInput.addEventListener("focus", () => {
+          phoneNotice.classList.add("expanded");
+        });
+        phoneInput.addEventListener("blur", () => {
+          setTimeout(() => {
+            phoneNotice.classList.remove("expanded");
+          }, 200);
+        });
+        phoneInput.addEventListener("input", () => {
+          const val = phoneInput.value.replace(/\D/g, "");
+          if (val.length === 10) {
+            phoneNotice.classList.remove("expanded");
+          }
+        });
+      }
     });
   </script>
   <script src="/assets/theme.js"></script>

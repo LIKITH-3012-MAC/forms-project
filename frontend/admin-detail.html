@@ -324,10 +324,26 @@
 
     .toast.toast-danger { border-left-color: var(--danger); }
     .toast.toast-success { border-left-color: var(--success); }
-  </style>
+  <script>
+    (function() {
+      const storedTheme = localStorage.getItem("event-theme") || "dark";
+      document.documentElement.setAttribute("data-theme", storedTheme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/assets/theme.css">
   <link rel="stylesheet" href="/assets/performance.css">
 </head>
 <body>
+  <div class="theme-floating">
+    <button id="themeToggle" class="neo-btn neo-btn-icon theme-toggle" aria-label="Toggle theme">
+      <span id="themeIcon">🌙</span>
+    </button>
+  </div>
+  <div class="particle-bg">
+    <div class="particle" style="width: 100px; height: 100px; left: 10%; top: 15%; animation-duration: 20s;"></div>
+    <div class="particle" style="width: 150px; height: 150px; right: 10%; top: 40%; animation-duration: 28s;"></div>
+    <div class="particle" style="width: 80px; height: 80px; left: 30%; bottom: 15%; animation-duration: 24s;"></div>
+  </div>
   <header>
     <a class="brand-title" href="admin-dashboard.html">
       SAKRA VISION <span>&larr; Back to Admin Overview</span>
@@ -338,7 +354,7 @@
   <div class="detail-grid">
     <!-- Left Column: Details & Audits -->
     <div class="left-col">
-      <div class="card">
+      <div class="card glass-panel">
         <div class="section-title">Registrant Registration Information</div>
         <div class="field-row">
           <span class="field-label">Registration ID</span>
@@ -374,7 +390,48 @@
         </div>
       </div>
 
-      <div class="card">
+      <!-- Team Details Card -->
+      <div class="card glass-panel" id="teamDetailsCard">
+        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Team Details Settings</span>
+          <button class="neo-btn neo-btn-secondary" style="padding: 4px 8px; font-size: 11px;" id="editTeamBtn" onclick="toggleEditTeamModal()">Edit Team Details ✏️</button>
+        </div>
+        <div class="field-row">
+          <span class="field-label">Registration Type</span>
+          <span class="field-val" id="teamRegType">Individual</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">Team Name</span>
+          <span class="field-val" id="teamNameVal">-</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">Total Members</span>
+          <span class="field-val" id="teamSizeVal">-</span>
+        </div>
+        <div class="field-row" style="margin-top: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; font-weight: 600;">
+          <span class="field-label">Team Lead Info</span>
+        </div>
+        <div class="field-row" style="padding-left: 10px;">
+          <span class="field-label">Name</span>
+          <span class="field-val" id="teamLeadNameVal">-</span>
+        </div>
+        <div class="field-row" style="padding-left: 10px;">
+          <span class="field-label">Email</span>
+          <span class="field-val" id="teamLeadEmailVal">-</span>
+        </div>
+        <div class="field-row" style="padding-left: 10px;">
+          <span class="field-label">Phone</span>
+          <span class="field-val" id="teamLeadPhoneVal">-</span>
+        </div>
+        <div class="field-row" style="margin-top: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; font-weight: 600;">
+          <span class="field-label">Team Members Details</span>
+        </div>
+        <div id="teamMembersList" style="padding-left: 10px;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <div class="card glass-panel">
         <div class="section-title">Manual Payment Ledger</div>
         <div class="field-row">
           <span class="field-label">Fee Charged</span>
@@ -402,7 +459,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card glass-panel">
         <div class="section-title">Attendance & Certificate Details</div>
         <div class="field-row">
           <span class="field-label">Attendance Status</span>
@@ -433,7 +490,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card glass-panel">
         <div class="section-title">Email Notification Logs</div>
         <div class="log-list" id="emailLogs">
           <!-- email items -->
@@ -443,7 +500,7 @@
 
     <!-- Right Column: Verification override Controls -->
     <div class="right-col">
-      <div class="card" style="position: sticky; top: 100px;">
+      <div class="card glass-panel" style="position: sticky; top: 100px;">
         <div class="section-title">Review Actions Overrides</div>
         
         <label for="adminActionNote">Action Message / Reason Note</label>
@@ -484,6 +541,47 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Edit Team Details Modal -->
+  <div class="modal-overlay" id="editTeamModal">
+    <div class="modal" style="max-width: 600px; width: 90%; background: #1e222b; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 class="modal-title" style="font-size: 18px; font-weight: 600; color: #fff;">Edit Team Details Settings</h2>
+        <button class="close-modal" onclick="toggleEditTeamModal()" style="background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer;">&times;</button>
+      </div>
+      <form onsubmit="handleSaveTeamDetails(event)">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-muted);">Registration Type</label>
+          <select id="editRegType" onchange="toggleEditTeamTypeFields()" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 16px; font-size: 14px; color: #ffffff; width: 100%; transition: all 0.3s ease;">
+            <option value="individual">Individual</option>
+            <option value="team">Team</option>
+          </select>
+        </div>
+        <div id="editTeamFields" style="display: none;">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-muted);">Team Name</label>
+            <input type="text" id="editTeamName" placeholder="Alpha Coders" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 16px; font-size: 14px; color: #ffffff; width: 100%; transition: all 0.3s ease;" />
+          </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-muted);">Team Size</label>
+            <select id="editTeamSize" onchange="generateEditTeamMemberFields()" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 16px; font-size: 14px; color: #ffffff; width: 100%; transition: all 0.3s ease;">
+              <option value="2">2 members</option>
+              <option value="3">3 members</option>
+              <option value="4">4 members</option>
+              <option value="5">5 members</option>
+              <option value="6">6 members</option>
+              <option value="10">10 members</option>
+              <option value="20">20 members</option>
+            </select>
+          </div>
+          <div id="editTeamMembersContainer" style="max-height: 250px; overflow-y: auto; padding-right: 5px; margin-bottom: 20px;">
+            <!-- Dynamic member input rows -->
+          </div>
+        </div>
+        <button type="submit" id="saveTeamBtn" class="neo-btn neo-btn-primary" style="width: 100%; margin-top: 10px;">Save Team Details</button>
+      </form>
     </div>
   </div>
 
@@ -566,6 +664,7 @@
 
         const data = await response.json();
         const reg = data.registration;
+        currentRegistration = reg;
 
         document.getElementById("regId").innerText = reg.registration_id;
         document.getElementById("fullName").innerText = reg.full_name;
@@ -634,6 +733,53 @@
         const payBadge = document.getElementById("payStatus");
         payBadge.className = `badge badge-${reg.payment_status}`;
         payBadge.innerText = reg.payment_status.replace("_", " ");
+
+        // Team Registration Details display
+        const teamDetailsCard = document.getElementById("teamDetailsCard");
+        document.getElementById("teamRegType").innerText = reg.registration_type ? reg.registration_type.toUpperCase() : "INDIVIDUAL";
+        if (reg.registration_type === "team") {
+          teamDetailsCard.style.display = "block";
+          document.getElementById("teamNameVal").innerText = reg.team_name || "N/A";
+          document.getElementById("teamSizeVal").innerText = reg.team_size;
+          
+          let leadName = reg.full_name;
+          let leadEmail = reg.email;
+          let leadPhone = reg.phone;
+          let members = [];
+          
+          if (reg.team_info) {
+            leadName = reg.team_info.team_lead?.name || reg.full_name;
+            leadEmail = reg.team_info.team_lead?.email || reg.email;
+            leadPhone = reg.team_info.team_lead?.phone || reg.phone;
+            members = reg.team_info.members || [];
+          }
+          
+          document.getElementById("teamLeadNameVal").innerText = leadName;
+          document.getElementById("teamLeadEmailVal").innerText = leadEmail;
+          document.getElementById("teamLeadPhoneVal").innerText = leadPhone;
+          
+          const membersListContainer = document.getElementById("teamMembersList");
+          membersListContainer.innerHTML = "";
+          if (members.length === 0) {
+            membersListContainer.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">No team members added.</div>';
+          } else {
+            members.forEach((m, index) => {
+              membersListContainer.innerHTML += `
+                <div style="margin-top: 10px; border-left: 2px solid var(--primary); padding-left: 10px;">
+                  <div style="font-weight: 500; color: #ffffff;">Member ${index + 2}: ${escapeHtml(m.name)}</div>
+                  <div style="font-size: 0.9em; color: var(--text-muted);">Email: ${escapeHtml(m.email)}</div>
+                </div>
+              `;
+            });
+          }
+        } else {
+          document.getElementById("teamNameVal").innerText = "N/A";
+          document.getElementById("teamSizeVal").innerText = "N/A (Individual)";
+          document.getElementById("teamLeadNameVal").innerText = reg.full_name;
+          document.getElementById("teamLeadEmailVal").innerText = reg.email;
+          document.getElementById("teamLeadPhoneVal").innerText = reg.phone;
+          document.getElementById("teamMembersList").innerHTML = '<div style="color: var(--text-muted); font-style: italic;">N/A (Individual Registration)</div>';
+        }
 
         function formatBytes(bytes) {
           if (!bytes) return '0 Bytes';
@@ -956,7 +1102,143 @@
         });
       }
     }
+    function toggleEditTeamModal() {
+      const modal = document.getElementById("editTeamModal");
+      const isVisible = modal.style.display === "flex";
+      modal.style.display = isVisible ? "none" : "flex";
 
+      if (!isVisible && currentRegistration) {
+        // Pre-populate modal fields
+        const regType = currentRegistration.registration_type || "individual";
+        document.getElementById("editRegType").value = regType;
+        document.getElementById("editTeamName").value = currentRegistration.team_name || "";
+        
+        const maxTeamSizeSelect = document.getElementById("editTeamSize");
+        const tSize = currentRegistration.team_size || 1;
+        
+        // Ensure the current team size value exists in the select dropdown options
+        let optionExists = Array.from(maxTeamSizeSelect.options).some(opt => parseInt(opt.value) === tSize);
+        if (!optionExists && tSize > 1) {
+          const opt = document.createElement("option");
+          opt.value = tSize;
+          opt.text = `${tSize} members`;
+          maxTeamSizeSelect.add(opt);
+        }
+        
+        maxTeamSizeSelect.value = tSize > 1 ? tSize : "4";
+        
+        toggleEditTeamTypeFields();
+      }
+    }
+
+    function toggleEditTeamTypeFields() {
+      const regType = document.getElementById("editRegType").value;
+      const teamFields = document.getElementById("editTeamFields");
+      if (regType === "team") {
+        teamFields.style.display = "block";
+        generateEditTeamMemberFields();
+      } else {
+        teamFields.style.display = "none";
+      }
+    }
+
+    function generateEditTeamMemberFields() {
+      const size = parseInt(document.getElementById("editTeamSize").value);
+      const container = document.getElementById("editTeamMembersContainer");
+      container.innerHTML = "";
+      
+      let existingMembers = [];
+      if (currentRegistration && currentRegistration.team_info && currentRegistration.team_info.members) {
+        existingMembers = currentRegistration.team_info.members;
+      }
+
+      // We need size - 1 member fields since the team lead is the main registrant
+      for (let i = 0; i < size - 1; i++) {
+        const member = existingMembers[i] || { name: "", email: "" };
+        container.innerHTML += `
+          <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; margin-top: 10px;">
+            <div style="font-weight: 600; font-size: 12px; color: var(--primary); margin-bottom: 8px;">Member ${i + 2} Details</div>
+            <div class="form-group" style="margin-bottom: 10px;">
+              <label style="font-size: 11px; margin-bottom: 4px;">Full Name</label>
+              <input type="text" class="edit-member-name" required placeholder="Member name" value="${escapeHtml(member.name)}" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 16px; font-size: 14px; color: #ffffff; width: 100%; transition: all 0.3s ease;" />
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+              <label style="font-size: 11px; margin-bottom: 4px;">Email Address</label>
+              <input type="email" class="edit-member-email" required placeholder="member@domain.com" value="${escapeHtml(member.email)}" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 16px; font-size: 14px; color: #ffffff; width: 100%; transition: all 0.3s ease;" />
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    async function handleSaveTeamDetails(e) {
+      e.preventDefault();
+      const regType = document.getElementById("editRegType").value;
+      const btn = document.getElementById("saveTeamBtn");
+      
+      let payload = {
+        registration_type: regType
+      };
+
+      if (regType === "team") {
+        const teamNameVal = document.getElementById("editTeamName").value.trim();
+        if (!teamNameVal) {
+          showToast("Team Name is required", "danger");
+          return;
+        }
+        const size = parseInt(document.getElementById("editTeamSize").value);
+        const nameInputs = document.querySelectorAll(".edit-member-name");
+        const emailInputs = document.querySelectorAll(".edit-member-email");
+        const members = [];
+        
+        for (let i = 0; i < size - 1; i++) {
+          const name = nameInputs[i].value.trim();
+          const email = emailInputs[i].value.trim().toLowerCase();
+          if (!name || !email) {
+            showToast("Please fill all member names and emails", "danger");
+            return;
+          }
+          members.push({ name, email });
+        }
+        
+        payload.team_name = teamNameVal;
+        payload.team_size = size;
+        payload.team_info = JSON.stringify({ members });
+      } else {
+        payload.team_name = null;
+        payload.team_size = 1;
+        payload.team_info = null;
+      }
+
+      setButtonLoading(btn, "Saving...");
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/registration/${registrationId}`, {
+          method: "PUT",
+          headers: {
+            "Authorization": `Bearer ${adminToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.detail || "Failed to update team details settings");
+        }
+
+        showToast("Team details saved successfully", "success");
+        markButtonSuccess(btn, "Saved ✅");
+        setTimeout(() => {
+          toggleEditTeamModal();
+          loadDetail(); // reload detail card
+          btn.innerText = "Save Team Details";
+          btn.disabled = false;
+        }, 1000);
+      } catch (err) {
+        showToast(err.message, "danger");
+        markButtonError(btn, "Failed");
+      }
+    }
     window.addEventListener("DOMContentLoaded", () => {
       checkAuth();
       loadDetail();
