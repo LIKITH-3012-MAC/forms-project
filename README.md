@@ -16,7 +16,7 @@ A production-grade, highly secure, and visually stunning alternative to standard
 *   **Database**: MySQL / SQLite (development fallback)
 *   **Frontend**: Vanilla HTML5, CSS3, ES6 JavaScript
 *   **Services**: Resend Email API
-*   **AI AGENT CALLING
+*   **AI AGENT**: CALLING
 
 ## 📋 Getting Started
 
