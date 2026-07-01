@@ -1,14 +1,22 @@
 {
+  "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    {
-      "source": "/",
-      "destination": "/frontend/form.html"
-    },
-    {
-      "source": "/form",
-      "destination": "/frontend/form.html"
-    }
+    { "source": "/", "destination": "/frontend/index.html" },
+    { "source": "/form", "destination": "/frontend/form.html" },
+    { "source": "/thank-you", "destination": "/frontend/thank-you.html" },
+    { "source": "/view-response", "destination": "/frontend/view-response.html" },
+    { "source": "/edit-response", "destination": "/frontend/edit-response.html" },
+    { "source": "/status", "destination": "/frontend/status.html" },
+    { "source": "/admin-login", "destination": "/frontend/admin-login.html" },
+    { "source": "/admin-dashboard", "destination": "/frontend/admin-dashboard.html" },
+    { "source": "/admin-detail", "destination": "/frontend/admin-detail.html" },
+    { "source": "/admin-analytics", "destination": "/frontend/admin-analytics.html" },
+    { "source": "/problem", "destination": "/frontend/problem.html" },
+    { "source": "/certificate", "destination": "/frontend/certificate.html" },
+    { "source": "/expired-token", "destination": "/frontend/expired-token.html" },
+    { "source": "/invalid-token", "destination": "/frontend/invalid-token.html" },
+    { "source": "/assets/:path*", "destination": "/frontend/assets/:path*" }
   ],
   "headers": [
     {
