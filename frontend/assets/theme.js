@@ -101,7 +101,7 @@ function markButtonError(button, text = "Try Again") {
   }, 1200);
 }
 
-async function apiFetch(path, options = {}, timeoutMs = 15000) {
+async function apiFetch(path, options = {}, timeoutMs = 60000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -147,11 +147,11 @@ async function apiFetch(path, options = {}, timeoutMs = 15000) {
 
 async function apiFetchWithRetry(path, options = {}) {
   try {
-    return await apiFetch(path, options, 15000);
+    return await apiFetch(path, options, 60000);
   } catch (err) {
     if (!options.method || options.method === "GET") {
       await new Promise(resolve => setTimeout(resolve, 800));
-      return await apiFetch(path, options, 15000);
+      return await apiFetch(path, options, 60000);
     }
     throw err;
   }
