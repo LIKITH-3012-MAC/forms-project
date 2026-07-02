@@ -3,6 +3,8 @@ import csv
 import io
 import json
 import datetime
+import uuid
+import random
 from typing import Optional
 from fastapi import FastAPI, Depends, Request, HTTPException, status, Response, Form, File, UploadFile, BackgroundTasks
 from fastapi.responses import JSONResponse, RedirectResponse, Response
@@ -441,6 +443,48 @@ async def check_utr(request: Request, utr: str, db: Session = Depends(get_db)):
         return {"available": False, "message": "UTR Reference ID is already taken"}
     return {"available": True, "message": "UTR Reference ID is unique"}
 
+@app.get("/api/verify-human/question")
+@limiter.limit("60/minute")
+async def get_human_question(request: Request, db: Session = Depends(get_db)):
+    """Generates a random addition question, stores it in the database, and returns the details."""
+    a = random.randint(1, 50)
+    b = random.randint(1, 50)
+    question_text = f"{a} + {b}"
+    expected_answer = a + b
+    question_id = str(uuid.uuid4())
+    
+    db_verify = models.HumanVerification(
+        id=question_id,
+        question_text=question_text,
+        expected_answer=expected_answer,
+        is_verified=False
+    )
+    db.add(db_verify)
+    db.commit()
+    
+    return {
+        "question_id": question_id,
+        "question": question_text
+    }
+
+@app.post("/api/verify-human")
+@limiter.limit("60/minute")
+async def verify_human(request: Request, req_data: schemas.HumanVerifyRequest, db: Session = Depends(get_db)):
+    """Verifies the human answer to the calculation question."""
+    db_verify = db.query(models.HumanVerification).filter(
+        models.HumanVerification.id == req_data.question_id
+    ).first()
+    
+    if not db_verify:
+        return JSONResponse(status_code=400, content={"verified": False, "message": "Verification session expired or invalid."})
+        
+    if db_verify.expected_answer == req_data.answer:
+        db_verify.is_verified = True
+        db.commit()
+        return {"verified": True}
+    else:
+        return {"verified": False, "message": "Incorrect answer."}
+
 def run_legacy_compatibility(predict_result: dict) -> dict:
     if not predict_result.get("success"):
         return {
@@ -698,6 +742,7 @@ async def register_attendee(
     agreement: bool = Form(...),
     payment_screenshot: UploadFile = File(...),
     captcha_token: Optional[str] = Form(None),
+    human_question_id: Optional[str] = Form(None),
     registration_type: str = Form("individual"),
     team_name: Optional[str] = Form(None),
     team_size: int = Form(1),
@@ -715,6 +760,29 @@ async def register_attendee(
         upi_reference_id = upi_reference_id.strip().upper()
         print("💳 UTR:", upi_reference_id)
         print("🖼 file:", payment_screenshot.filename, payment_screenshot.content_type)
+
+        # Verify Human Verification Question (lightweight CAPTCHA alternative)
+        if not human_question_id:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "message": "Human verification is required. Please solve the calculation."
+                }
+            )
+
+        db_verify = db.query(models.HumanVerification).filter(
+            models.HumanVerification.id == human_question_id
+        ).first()
+
+        if not db_verify or not db_verify.is_verified:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "message": "Human verification check failed. Please solve the calculation again."
+                }
+            )
 
         # Verify CAPTCHA
         if not captcha_token:

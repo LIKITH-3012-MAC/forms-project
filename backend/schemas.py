@@ -128,4 +128,9 @@ class AdminRegistrationUpdate(BaseModel):
     team_size: Optional[int] = None
     team_info: Optional[str] = None
 
+class HumanVerifyRequest(BaseModel):
+    question_id: str
+    answer: int
+
+
 

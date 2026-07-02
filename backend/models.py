@@ -139,3 +139,13 @@ class EventSetting(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     setting_key = Column(String(100), unique=True, index=True, nullable=False)
     setting_value = Column(Text, nullable=True)
+
+class HumanVerification(Base):
+    __tablename__ = "human_verifications"
+
+    id = Column(String(50), primary_key=True, index=True)
+    question_text = Column(String(100), nullable=False)
+    expected_answer = Column(Integer, nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=get_ist_time)
+

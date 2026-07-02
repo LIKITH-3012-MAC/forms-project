@@ -517,6 +517,246 @@
       padding: 16px !important;
       margin-top: 10px !important;
     }
+
+    /* Glassmorphism Human Verification Card */
+    .human-verification-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(20px) scale(0.98);
+      transition: opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      margin: 25px auto;
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .human-verification-wrapper.show {
+      display: block;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .human-verification-card {
+      position: relative;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      animation: floatCard 5s ease-in-out infinite;
+    }
+
+    [data-theme="light"] .human-verification-card {
+      background: rgba(255, 255, 255, 0.65);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+    }
+
+    @keyframes floatCard {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+      100% { transform: translateY(0px); }
+    }
+
+    .human-verification-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, rgba(139, 92, 246, 0.05) 50%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .card-header h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #38bdf8, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+    }
+
+    [data-theme="light"] .card-header h3 {
+      background: linear-gradient(135deg, #0284c7, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .verification-instruction {
+      font-size: 0.9rem;
+      color: var(--muted-2);
+      margin-bottom: 20px;
+    }
+
+    .verification-math-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .math-question {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--text-strong);
+      letter-spacing: -0.03em;
+    }
+
+    .math-equals {
+      font-size: 1.8rem;
+      color: var(--muted-2);
+      font-weight: 500;
+    }
+
+    .math-question-mark {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #8b5cf6;
+    }
+
+    .verification-input-group {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .verification-input-group input {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 1.1rem;
+      color: var(--text-strong);
+      text-align: center;
+      outline: none;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+
+    [data-theme="light"] .verification-input-group input {
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .verification-input-group input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
+    .verify-action-btn {
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      background: linear-gradient(135deg, #38bdf8, #8b5cf6);
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .verify-action-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+    }
+
+    .verification-feedback {
+      margin-top: 16px;
+      font-size: 0.9rem;
+      text-align: center;
+      font-weight: 500;
+      min-height: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .feedback-error {
+      color: var(--danger);
+    }
+
+    .feedback-success {
+      color: var(--success);
+    }
+
+    /* Success State View */
+    .verification-success-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 10px 0;
+      animation: scaleUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .success-icon-wrapper {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(34, 197, 94, 0.15);
+      border: 2px solid var(--success);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      box-shadow: 0 0 16px rgba(34, 197, 94, 0.3);
+    }
+
+    .success-icon-wrapper svg {
+      color: var(--success);
+      width: 28px;
+      height: 28px;
+      stroke-width: 3;
+    }
+
+    .verification-success-view h4 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text-strong);
+      margin-bottom: 6px;
+    }
+
+    .verification-success-view p {
+      font-size: 0.9rem;
+      color: var(--muted-2);
+    }
+
+    .shake {
+      animation: shake 0.4s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+
+    @keyframes scaleUp {
+      0% { opacity: 0; transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1); }
+    }
   </style>
   <link rel="stylesheet" href="/assets/theme.css">
   <link rel="stylesheet" href="/assets/performance.css">
@@ -758,6 +998,52 @@
           <label for="agreement" class="required" id="agreementLabel">I certify that the UTR/Reference ID provided matches my uploaded payment screenshot and represents a successful fee transfer of ₹700.</label>
         </div>
 
+        <!-- Human Verification Section -->
+        <div id="humanVerificationWrapper" class="human-verification-wrapper" role="region" aria-label="Human Verification">
+          <div id="humanVerificationCard" class="human-verification-card">
+            <div class="card-content" id="verificationPromptView">
+              <div class="card-header">
+                <span class="sparkle-icon">✨</span>
+                <h3>Human Verification</h3>
+              </div>
+              <p class="verification-instruction">Please solve this quick calculation.</p>
+              
+              <div class="verification-math-row">
+                <span id="verificationQuestionText" class="math-question">-- + --</span>
+                <span class="math-equals">=</span>
+                <span class="math-question-mark">?</span>
+              </div>
+              
+              <div class="verification-input-group">
+                <input 
+                  type="number" 
+                  id="verificationAnswerInput" 
+                  placeholder="Enter answer" 
+                  pattern="[0-9]*" 
+                  inputmode="numeric" 
+                  required 
+                />
+                <button type="button" id="verifyBtn" class="verify-action-btn" onclick="submitHumanVerification()">
+                  Verify
+                </button>
+              </div>
+              
+              <div id="verificationFeedback" class="verification-feedback" role="status" aria-live="polite"></div>
+            </div>
+
+            <!-- Success State View (initially hidden) -->
+            <div class="verification-success-view" id="verificationSuccessView" style="display: none;">
+              <div class="success-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h4>Verification Successful</h4>
+              <p>Your application is ready to submit.</p>
+            </div>
+          </div>
+        </div>
+
         <div class="form-group" style="margin-top: 20px; display: flex; justify-content: center;">
           <div class="cf-turnstile" data-sitekey="0x4AAAAAADiFEczynqPxcHxN" data-theme="dark"></div>
         </div>
@@ -766,7 +1052,7 @@
           <button type="button" class="neo-btn neo-btn-secondary" onclick="prevStep(1)">
             &larr; Back
           </button>
-          <button type="button" class="neo-btn neo-btn-primary" onclick="openReviewModal()">
+          <button type="button" id="submitApplicationBtn" class="neo-btn neo-btn-primary" onclick="openReviewModal()" disabled>
             Submit Application
           </button>
         </div>
@@ -808,6 +1094,11 @@
     const BACKEND_URL = CONFIG.BACKEND_URL;
     let currentStep = 1;
     let eventConfig = null;
+    let currentQuestionId = "";
+    let isHumanVerified = false;
+    let humanQuestionId = "";
+    let humanAnswer = "";
+    let humanVerificationTimeout = null;
 
     // Toast alert helper
     function showToast(message, type = "info") {
@@ -829,6 +1120,122 @@
     // Network tracking
     window.addEventListener("offline", () => showToast("You are currently offline", "danger"));
     window.addEventListener("online", () => showToast("Network connected. You are back online.", "success"));
+
+    // Human Verification Helpers
+    async function fetchNewVerificationQuestion() {
+      const qText = document.getElementById("verificationQuestionText");
+      const feedback = document.getElementById("verificationFeedback");
+      const answerInput = document.getElementById("verificationAnswerInput");
+      const verifyBtn = document.getElementById("verifyBtn");
+
+      qText.innerText = "Loading...";
+      answerInput.disabled = true;
+      verifyBtn.disabled = true;
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/verify-human/question`);
+        if (!response.ok) {
+          throw new Error("Failed to load verification question");
+        }
+        const data = await response.json();
+        currentQuestionId = data.question_id;
+        qText.innerText = data.question;
+        
+        answerInput.disabled = false;
+        verifyBtn.disabled = false;
+        answerInput.value = "";
+        answerInput.focus();
+      } catch (err) {
+        console.error("Error fetching captcha question:", err);
+        qText.innerText = "Error loading";
+        feedback.innerHTML = "❌ Failed to load verification. Please click here to retry.";
+        feedback.className = "verification-feedback feedback-error";
+        feedback.style.cursor = "pointer";
+        feedback.onclick = () => {
+          feedback.onclick = null;
+          feedback.innerHTML = "";
+          feedback.className = "verification-feedback";
+          fetchNewVerificationQuestion();
+        };
+      }
+    }
+
+    async function submitHumanVerification() {
+      const answerInput = document.getElementById("verificationAnswerInput");
+      const verifyBtn = document.getElementById("verifyBtn");
+      const feedback = document.getElementById("verificationFeedback");
+      const card = document.getElementById("humanVerificationCard");
+      const submitBtn = document.getElementById("submitApplicationBtn");
+
+      const valueStr = answerInput.value.trim();
+      if (!valueStr) {
+        feedback.innerText = "Please enter an answer.";
+        feedback.className = "verification-feedback feedback-error";
+        return;
+      }
+
+      const val = parseInt(valueStr);
+      if (isNaN(val)) {
+        feedback.innerText = "Please enter a valid number.";
+        feedback.className = "verification-feedback feedback-error";
+        return;
+      }
+
+      verifyBtn.disabled = true;
+      answerInput.disabled = true;
+      feedback.innerHTML = "Verifying...";
+      feedback.className = "verification-feedback";
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/verify-human`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            question_id: currentQuestionId,
+            answer: val
+          })
+        });
+
+        const data = await response.json();
+        if (data.verified) {
+          isHumanVerified = true;
+          humanQuestionId = currentQuestionId;
+          humanAnswer = val;
+
+          feedback.innerHTML = "✅ Verification successful";
+          feedback.className = "verification-feedback feedback-success";
+
+          document.getElementById("verificationPromptView").style.display = "none";
+          const successView = document.getElementById("verificationSuccessView");
+          successView.style.display = "flex";
+
+          submitBtn.disabled = false;
+        } else {
+          feedback.innerHTML = "❌ Incorrect answer. Please try another one.";
+          feedback.className = "verification-feedback feedback-error";
+
+          card.classList.add("shake");
+          setTimeout(() => {
+            card.classList.remove("shake");
+          }, 400);
+
+          answerInput.disabled = false;
+          verifyBtn.disabled = false;
+          answerInput.value = "";
+          answerInput.focus();
+
+          await fetchNewVerificationQuestion();
+        }
+      } catch (err) {
+        console.error("Verification connection error:", err);
+        feedback.innerText = "❌ Verification error. Please try again.";
+        feedback.className = "verification-feedback feedback-error";
+        verifyBtn.disabled = false;
+        answerInput.disabled = false;
+      }
+    }
 
     // File upload logic
     let selectedFile = null;
@@ -1400,6 +1807,9 @@
         payload.append("payment_screenshot", screenshotFile);
         const captcha_token = document.querySelector('[name="cf-turnstile-response"]')?.value || "";
         payload.append("captcha_token", captcha_token);
+        if (humanQuestionId) {
+          payload.append("human_question_id", humanQuestionId);
+        }
 
         // Include team registration fields in FormData payload if enabled by admin
         const hasTeamReg = document.getElementById("teamRegistrationContainer").style.display !== "none";
@@ -1483,6 +1893,20 @@
         );
         markButtonError(submitBtn, "Failed");
         closeReviewModal();
+
+        // Reset human verification on failure to prevent replay
+        isHumanVerified = false;
+        humanQuestionId = "";
+        humanAnswer = "";
+        document.getElementById("verificationPromptView").style.display = "block";
+        document.getElementById("verificationSuccessView").style.display = "none";
+        document.getElementById("verificationFeedback").innerHTML = "";
+        document.getElementById("verificationFeedback").className = "verification-feedback";
+        document.getElementById("verificationAnswerInput").value = "";
+        document.getElementById("submitApplicationBtn").disabled = true;
+        if (document.getElementById("agreement").checked) {
+          fetchNewVerificationQuestion();
+        }
       } finally {
         submissionInProgress = false;
 
@@ -1558,6 +1982,51 @@
             phoneNotice.classList.remove("expanded");
           }
         });
+      }
+
+      // Human Verification Logic
+      const agreementCheckbox = document.getElementById("agreement");
+      const submitBtn = document.getElementById("submitApplicationBtn");
+      const wrapper = document.getElementById("humanVerificationWrapper");
+      const answerInput = document.getElementById("verificationAnswerInput");
+
+      agreementCheckbox.addEventListener("change", async function() {
+        if (agreementCheckbox.checked) {
+          isHumanVerified = false;
+          humanQuestionId = "";
+          humanAnswer = "";
+          submitBtn.disabled = true;
+
+          wrapper.style.display = "block";
+          requestAnimationFrame(() => {
+            wrapper.classList.add("show");
+          });
+
+          await fetchNewVerificationQuestion();
+        } else {
+          submitBtn.disabled = true;
+          wrapper.classList.remove("show");
+          if (humanVerificationTimeout) clearTimeout(humanVerificationTimeout);
+          humanVerificationTimeout = setTimeout(() => {
+            wrapper.style.display = "none";
+            document.getElementById("verificationPromptView").style.display = "block";
+            document.getElementById("verificationSuccessView").style.display = "none";
+            document.getElementById("verificationFeedback").innerHTML = "";
+            document.getElementById("verificationFeedback").className = "verification-feedback";
+            answerInput.value = "";
+          }, 500);
+        }
+      });
+
+      answerInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          submitHumanVerification();
+        }
+      });
+
+      if (agreementCheckbox && agreementCheckbox.checked) {
+        agreementCheckbox.dispatchEvent(new Event("change"));
       }
     });
   </script>
